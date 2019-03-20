@@ -1,0 +1,147 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "EM5mtWBrQSzTq/vaQpftxQ7UOxI=",
+			"path": "github.com/eclipse/paho.mqtt.golang",
+			"revision": "cb7eb9363b4469c601b1a714447653b720e4e43a",
+			"revisionTime": "2019-01-17T15:08:08Z"
+		},
+		{
+			"checksumSHA1": "bcihEmxEmUm3UKca45utc9eRyXY=",
+			"path": "github.com/google/uuid",
+			"revision": "9b3b1e0f5f99ae461456d768e7d301a7acdaa2d8",
+			"revisionTime": "2018-09-17T14:00:05Z"
+		},
+		{
+			"checksumSHA1": "kJXWK9r2PT3f0mvfFhbtCdQx8tE=",
+			"path": "github.com/gorilla/mux",
+			"revision": "3d80bc801bb034e17cae38591335b3b1110f1c47",
+			"revisionTime": "2018-10-30T15:25:28Z"
+		},
+		{
+			"checksumSHA1": "r6ZMyP/HsdeToXIxvgP3ntL6Bds=",
+			"path": "github.com/konsorten/go-windows-terminal-sequences",
+			"revision": "5c8c8bd35d3832f5d134ae1e1e375b69a4d25242",
+			"revisionTime": "2018-10-04T22:41:46Z"
+		},
+		{
+			"checksumSHA1": "Bssc82hB3vC+9pRqIvRja8VlmTU=",
+			"path": "github.com/pborman/uuid",
+			"revision": "8b1b92947f46224e3b97bb1a3a5b0382be00d31e",
+			"revisionTime": "2018-09-18T08:52:46Z"
+		},
+		{
+			"checksumSHA1": "DTy0iJ2w5C+FDsN9EnzfhNmvS+o=",
+			"path": "github.com/pkg/errors",
+			"revision": "059132a15dd08d6704c67711dae0cf35ab991756",
+			"revisionTime": "2018-10-23T23:59:46Z"
+		},
+		{
+			"checksumSHA1": "OQKloKRXDNJmSV9kFhDRpW4Ilrg=",
+			"path": "github.com/sirupsen/logrus",
+			"revision": "44067abb194b1bc8b342e1f2120f8d3ea691b834",
+			"revisionTime": "2018-11-03T06:28:19Z"
+		},
+		{
+			"checksumSHA1": "Xv51Y9yRqOsfJErAye/AE6mJQ+A=",
+			"origin": "github.impcloud.net/Responsive-Retail-Core/utilities.git",
+			"path": "github.impcloud.net/Responsive-Retail-Core/utilities/",
+			"revision": "1ec0ad698760945bdf89373a3454b40458a2020e",
+			"revisionTime": "2018-10-05T15:59:22Z",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "d6QDEbzh365MSuhS7230ykh2oC4=",
+			"path": "github.impcloud.net/Responsive-Retail-Core/utilities/configuration",
+			"revision": "1ec0ad698760945bdf89373a3454b40458a2020e",
+			"revisionTime": "2018-10-05T15:59:22Z"
+		},
+		{
+			"checksumSHA1": "IR/CnvgtbDh1a6qM+eOepehhVf8=",
+			"path": "github.impcloud.net/Responsive-Retail-Core/utilities/consulApi",
+			"revision": "1ec0ad698760945bdf89373a3454b40458a2020e",
+			"revisionTime": "2018-10-05T15:59:22Z"
+		},
+		{
+			"checksumSHA1": "mMDQYwXugaCjCc/7YOikImHi9ns=",
+			"path": "github.impcloud.net/Responsive-Retail-Core/utilities/go-metrics",
+			"revision": "1ec0ad698760945bdf89373a3454b40458a2020e",
+			"revisionTime": "2018-10-05T15:59:22Z"
+		},
+		{
+			"checksumSHA1": "3AIIboCr7HGAvj18uqZ6qgFi0bI=",
+			"path": "github.impcloud.net/Responsive-Retail-Core/utilities/go-metrics-influxdb",
+			"revision": "1ec0ad698760945bdf89373a3454b40458a2020e",
+			"revisionTime": "2018-10-05T15:59:22Z"
+		},
+		{
+			"checksumSHA1": "3SmGyAIovSR+vy2o+T+5I40GlRg=",
+			"path": "github.impcloud.net/Responsive-Retail-Inventory/expect",
+			"revision": "79c9fedb041b6952a7ac579cb27b8e593cf2fb66",
+			"revisionTime": "2019-03-01T21:08:55Z"
+		},
+		{
+			"checksumSHA1": "IQkUIOnvlf0tYloFx9mLaXSvXWQ=",
+			"path": "golang.org/x/crypto/curve25519",
+			"revision": "505ab145d0a99da450461ae2c1a9f6cd10d1f447",
+			"revisionTime": "2018-09-26T22:07:39Z"
+		},
+		{
+			"checksumSHA1": "2LpxYGSf068307b7bhAuVjvzLLc=",
+			"path": "golang.org/x/crypto/ed25519",
+			"revision": "505ab145d0a99da450461ae2c1a9f6cd10d1f447",
+			"revisionTime": "2018-09-26T22:07:39Z"
+		},
+		{
+			"checksumSHA1": "0JTAFXPkankmWcZGQJGScLDiaN8=",
+			"path": "golang.org/x/crypto/ed25519/internal/edwards25519",
+			"revision": "505ab145d0a99da450461ae2c1a9f6cd10d1f447",
+			"revisionTime": "2018-09-26T22:07:39Z"
+		},
+		{
+			"checksumSHA1": "fhxj9uzosD3dQefNF5JuGJzGZwg=",
+			"path": "golang.org/x/crypto/internal/chacha20",
+			"revision": "505ab145d0a99da450461ae2c1a9f6cd10d1f447",
+			"revisionTime": "2018-09-26T22:07:39Z"
+		},
+		{
+			"checksumSHA1": "/U7f2gaH6DnEmLguVLDbipU6kXU=",
+			"path": "golang.org/x/crypto/internal/subtle",
+			"revision": "505ab145d0a99da450461ae2c1a9f6cd10d1f447",
+			"revisionTime": "2018-09-26T22:07:39Z"
+		},
+		{
+			"checksumSHA1": "vKbPb9fpjCdzuoOvajOJnYfHG2g=",
+			"path": "golang.org/x/crypto/poly1305",
+			"revision": "505ab145d0a99da450461ae2c1a9f6cd10d1f447",
+			"revisionTime": "2018-09-26T22:07:39Z"
+		},
+		{
+			"checksumSHA1": "eMiE+YWT0hJF4B9/hrKHaRp39aU=",
+			"path": "golang.org/x/crypto/ssh",
+			"revision": "505ab145d0a99da450461ae2c1a9f6cd10d1f447",
+			"revisionTime": "2018-09-26T22:07:39Z"
+		},
+		{
+			"checksumSHA1": "BSPDVKviqHQaG2phOFN690zAKB8=",
+			"path": "golang.org/x/crypto/ssh/terminal",
+			"revision": "505ab145d0a99da450461ae2c1a9f6cd10d1f447",
+			"revisionTime": "2018-09-26T22:07:39Z"
+		},
+		{
+			"checksumSHA1": "kKuB1uPMgdvylnqWe7MKJPRtp2w=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "a5c9d58dba9a56f97aaa86f55e638b718c5a6c42",
+			"revisionTime": "2018-11-28T10:54:42Z"
+		},
+		{
+			"checksumSHA1": "Y7nctMxT58lRM78VtElPerhcnEs=",
+			"path": "golang.org/x/sys/windows",
+			"revision": "a5c9d58dba9a56f97aaa86f55e638b718c5a6c42",
+			"revisionTime": "2018-11-28T10:54:42Z"
+		}
+	],
+	"rootPath": "github.impcloud.net/Responsive-Retail-Inventory/rfid-mqtt-provider-service"
+}
