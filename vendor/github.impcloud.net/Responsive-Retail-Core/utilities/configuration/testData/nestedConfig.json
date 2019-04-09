@@ -1,0 +1,37 @@
+{
+  "loggingLevel": "info",
+  "telemetryEndpoint": "",
+  "telemetryDataStoreName": "InventoryManagement",
+  "responseLimit": 10000,
+  "port": "8080",
+  "testing": {
+    "algo": {
+      "face-smile": {
+        "image": "face-smile:image",
+        "fps": 5,
+        "floatValue": 26.53
+      },
+      "people-counting": {
+        "image": "people-counting:image",
+        "fps": 7,
+        "isTrue": true
+      }
+    },
+    "log":"debug"
+  },
+  "location": {
+    "a": "b",
+    "c": "d"
+  },
+  "other": "stuff",
+  "list": [
+    "one",
+    "two",
+    "three"
+  ],
+  "numbers": [
+    1,
+    2,
+    3
+  ]
+}

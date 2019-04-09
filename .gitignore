@@ -35,7 +35,7 @@ dbclient/debug.test
 routes/debug.test
 rrp-microservice-template-mongodb.exe
 rrp-microservice-template-mongodb
-rfid-config-service
+data-provider-service
 
 # vs code stuff
 cSpell.json

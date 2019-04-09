@@ -25,7 +25,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"github.impcloud.net/Responsive-Retail-Inventory/rfid-mqtt-provider-service/pkg/web"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/pkg/web"
 )
 
 // Logger middleware

@@ -24,7 +24,7 @@ import (
 	"os"
 
 	"github.impcloud.net/Responsive-Retail-Core/utilities/go-metrics"
-	"github.impcloud.net/Responsive-Retail-Inventory/rfid-mqtt-provider-service/pkg/healthcheck"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/pkg/healthcheck"
 
 	"github.com/sirupsen/logrus"
 )

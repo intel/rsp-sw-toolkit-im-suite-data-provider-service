@@ -1,5 +1,10 @@
 #!/bin/bash
+# data-provider-service
 
-echo -e "  \e[2mGo \e[0m\e[94mBuild(ing)...\e[0m"
+set -e
+
+echo -e "Go Building"
 CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo
 
+echo -e "Making docker image"
+docker build -t data-provider-service .

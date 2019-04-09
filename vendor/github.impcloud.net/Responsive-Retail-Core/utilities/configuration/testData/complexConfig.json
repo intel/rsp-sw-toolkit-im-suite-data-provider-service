@@ -1,0 +1,11 @@
+{
+  "complex": {
+    "location" : "Arizona",
+    "streetNumber": 1209,
+    "isHome" : true,
+    "price" : 568.99
+  },
+  "other" : "stuff",
+  "list" : ["one", "two", "three"],
+  "numbers" : [1,2,3]
+}

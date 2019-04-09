@@ -1,5 +1,5 @@
 {
-  "serviceName": "RRP - RFID Configuration Service",
+  "serviceName": "RRP - Data Provider",
   "loggingLevel": "debug",
   "telemetryEndpoint": "",
   "telemetryDataStoreName": "",
@@ -7,8 +7,9 @@
   "baseEndpoint": "https://api.myjson.com/bins",
   "mqttTopicMapping": {
     "skumapping": {
-      "urlTemplate": "/1g81wy",
-      "topics": ["rfid/gw/productmasterdata"]
+      "urlTemplate": "/api/getInventory?siteId={{siteID}}&from={{lastQuery}}",
+      "topics": ["rfid/gw/productmasterdata"],
+      "useAuth": true
     }
   },
   "pollPeriodSecs": 30,
@@ -16,7 +17,7 @@
   "failureRetries": 3,
   "proxyThroughCloudConnector": false,
   "cloudConnectorEndpoint": "",
-  "oauthEndpoint": "",
+  "oauthEndpoint": "http://127.0.0.1:8812/authenticate",
   "oauthCredentials": "username:password",
   "encryptGatewayConnection": false,
   "gatewayCredentialsPath": "",

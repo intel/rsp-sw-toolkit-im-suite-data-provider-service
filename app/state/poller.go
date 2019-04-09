@@ -22,16 +22,16 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/pkg/coe"
 	"math"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.impcloud.net/Responsive-Retail-Core/utilities/go-metrics"
-	"github.impcloud.net/Responsive-Retail-Inventory/rfid-mqtt-provider-service/app/broker"
-	"github.impcloud.net/Responsive-Retail-Inventory/rfid-mqtt-provider-service/app/config"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/app/broker"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/app/config"
 )
 
 const defaultEndpointTmpl = `{{.Config.File.Endpoint}}`
@@ -62,8 +62,11 @@ type ForcePollFunc func()
 // of the application to correctly access it.
 func NewPoller(conf config.ServiceConfig) (*Poller, error) {
 	poller = &Poller{
-		baseEndpoint: config.AppConfig.BaseEndpoint,
-		tmplValues:   &serviceTmplVals{currentTimestamp: getCurrentTimestamp()},
+		baseEndpoint: conf.BaseEndpoint,
+		tmplValues:   &serviceTmplVals{
+			currentTimestamp: time.Now().UTC(),
+			siteID: coe.DeviceInfo.SiteId,
+		},
 		mqttTopics:   make(map[string]MqttTopicMapping),
 	}
 
@@ -71,7 +74,7 @@ func NewPoller(conf config.ServiceConfig) (*Poller, error) {
 		poller.mqttTopics[k] = parseMqttTopicMapping(v)
 	}
 
-	poller.ccRequest = NewCCRequest(30, config.AppConfig.FailureRetries)
+	poller.ccRequest = NewCCRequest(30, conf.FailureRetries)
 
 	// setup polling through CC, if configured
 	if conf.ProxyThroughCloudConnector {
@@ -94,7 +97,6 @@ func (p *Poller) SetDispatcherChannels(errChan *broker.ErrorChannel, itemChan *b
 // PollAsync asynchronously polls the configuration server and applies updates.
 // Shut it down via the context.
 func (p *Poller) PollAsync(ctx context.Context, config config.ServiceConfig) (ForcePollFunc, error) {
-
 	pollForced := make(chan int, 1)
 	forcePoll := func() {
 		select {
@@ -152,13 +154,9 @@ func (p *Poller) PollAsync(ctx context.Context, config config.ServiceConfig) (Fo
 
 // serviceTmplVals are used to fill the URL templates.
 type serviceTmplVals struct {
-	lastQuery        int64
-	currentTimestamp int64
-}
-
-// getCurrentTimestamp returns the current date/time in UNIX millisecond format
-func getCurrentTimestamp() int64 {
-	return time.Now().UnixNano() / int64(time.Millisecond)
+	lastQuery        time.Time
+	currentTimestamp time.Time
+	siteID           string
 }
 
 // pollOnce polls the server one time and process the resulting content.
@@ -166,11 +164,11 @@ func (p *Poller) pollOnce() (processResult, []error) {
 	logrus.Debugf("Starting pollOnce")
 	var result processResult
 	var errors []error
-	currTimestamp := getCurrentTimestamp()
+	currTimestamp := time.Now().UTC()
 	var wg sync.WaitGroup
 	wg.Add(len(p.mqttTopics))
 
-	//Query the endpoint defined for each of the mqttTopics
+	// Query the endpoint defined for each of the mqttTopics
 	for _, topic := range p.mqttTopics {
 		go poll(p, topic, &wg, &errors)
 	}
@@ -211,17 +209,18 @@ func poll(p *Poller, topicMap MqttTopicMapping, wg *sync.WaitGroup, errors *[]er
 	// execute the base template
 	logrus.Debug("Filling base URL template.")
 	baseURL, err := p.fillBaseURL(topicMap, p.tmplValues)
-	if isError(err) {
+	if err != nil {
+		logrus.Errorf("Error on fillBaseURL: %s", err)
 		*errors = append(*errors, err)
 	} else {
 		logPollInfo("Polling server")
 		var content []byte
 		var err error
-		content, err = p.ccRequest.PerformRequest(baseURL)
+		content, err = p.ccRequest.PerformRequest(baseURL, topicMap.UseAuth)
 
 		logrus.Debugf("Content: %s", content)
-		if isError(err) {
-			logrus.Debugf("Error after polling")
+		if err != nil {
+			logrus.Debugf("Error after polling: %s", err)
 			*errors = append(*errors, err)
 		} else {
 			topicList := topicMap.Topics
@@ -239,11 +238,13 @@ func poll(p *Poller, topicMap MqttTopicMapping, wg *sync.WaitGroup, errors *[]er
 // fillBaseURL fills the URL and replaces parameters to query an endpoint
 func (p *Poller) fillBaseURL(topic MqttTopicMapping, tmplValues *serviceTmplVals) (string, error) {
 	// fill the baseURL, wrapping the tmplValues in a Service key for consistency
-	baseURL := config.AppConfig.BaseEndpoint + topic.UrlTemplate
+	baseURL := p.baseEndpoint + topic.UrlTemplate
 
-	baseURL = strings.Replace(baseURL, "{{lastQuery}}", strconv.FormatInt(tmplValues.lastQuery, 10), 1)
-	baseURL = strings.Replace(baseURL, "{{currentTimestamp}}", strconv.FormatInt(tmplValues.currentTimestamp, 10), 1)
-
+	baseURL = strings.Replace(baseURL, "{{lastQuery}}",
+		tmplValues.lastQuery.UTC().Format(`2006-01-02T15:04:05.000Z`), 1)
+	baseURL = strings.Replace(baseURL, "{{currentTimestamp}}",
+		tmplValues.currentTimestamp.UTC().Format(`2006-01-02T15:04:05.000Z`), 1)
+	baseURL = strings.Replace(baseURL, "{{siteID}}", tmplValues.siteID, 1)
 	return baseURL, nil
 }
 

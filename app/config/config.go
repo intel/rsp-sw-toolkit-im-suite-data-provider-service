@@ -68,6 +68,8 @@ type (
 		// Gateway is the string value with the IP address of the MQTT broker
 		// in the gateway
 		Gateway string
+		// DeviceInfoCacheFile is the filename to use for caching the COE device information
+		DeviceInfoCacheFile string
 
 		SecureMode, SkipCertVerify bool
 	}
@@ -187,6 +189,12 @@ func InitConfig() error {
 	AppConfig.Gateway, err = config.GetString("gateway")
 	if err != nil {
 		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
+	}
+
+	AppConfig.DeviceInfoCacheFile, err = config.GetString("deviceInfoCacheFile")
+	if err != nil {
+		AppConfig.DeviceInfoCacheFile = "/mnt/hostconfig/coe_device_info.json"
+		log.Printf("Warning: deviceInfoCacheFile was not specified, using default value: %s", AppConfig.DeviceInfoCacheFile)
 	}
 
 	AppConfig.SecureMode, err = config.GetBool("secureMode")

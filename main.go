@@ -22,6 +22,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/pkg/coe"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -30,16 +31,16 @@ import (
 	"sync"
 	"time"
 
-	"github.impcloud.net/Responsive-Retail-Inventory/rfid-mqtt-provider-service/app/broker"
-	"github.impcloud.net/Responsive-Retail-Inventory/rfid-mqtt-provider-service/app/state"
-	"github.impcloud.net/Responsive-Retail-Inventory/rfid-mqtt-provider-service/pkg/middlewares"
-	"github.impcloud.net/Responsive-Retail-Inventory/rfid-mqtt-provider-service/pkg/web"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/app/broker"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/app/state"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/pkg/middlewares"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/pkg/web"
 
 	log "github.com/sirupsen/logrus"
 	"github.impcloud.net/Responsive-Retail-Core/utilities/go-metrics"
 	reporter "github.impcloud.net/Responsive-Retail-Core/utilities/go-metrics-influxdb"
-	"github.impcloud.net/Responsive-Retail-Inventory/rfid-mqtt-provider-service/app/config"
-	"github.impcloud.net/Responsive-Retail-Inventory/rfid-mqtt-provider-service/app/routes"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/app/config"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/app/routes"
 )
 
 type localDispatcher struct {
@@ -73,6 +74,12 @@ func main() {
 	}
 
 	logMain("Starting RFID Config Service...")
+
+	// first things first, lets get the coe device information
+	if err := coe.InitializeDeviceInfo(); err != nil {
+		// we do not want to exit, just warn
+		log.Warn("Unable to retrieve coe device information")
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -122,11 +129,8 @@ func initBroker(pllr *state.Poller) {
 		providerOptions.Password = password
 	}
 
-	go routeAndPublishMqtt(&providerOptions, pllr)
-}
-
-func routeAndPublishMqtt(options *broker.MosquittoProviderOptions, pllr *state.Poller) {
-	rfidBroker := broker.NewMosquittoClient(options)
+	var rfidBroker *broker.MosquittoProvider
+	rfidBroker = broker.NewMosquittoClient(&providerOptions)
 
 	var dispatcher localDispatcher
 	dispatcher.internalErrChannel = make(broker.ErrorChannel, 10)
@@ -135,35 +139,37 @@ func routeAndPublishMqtt(options *broker.MosquittoProviderOptions, pllr *state.P
 	pllr.SetDispatcherChannels(&dispatcher.internalErrChannel, &dispatcher.internalItemChannel)
 
 	rfidBroker.Start(dispatcher.internalItemChannel, dispatcher.internalErrChannel)
-	for {
-		select {
-		case started := <-options.OnStarted:
-			if !started.Started {
+
+	go func() {
+
+		for {
+			select {
+			case started := <-providerOptions.OnStarted:
+				if !started.Started {
+					log.WithFields(log.Fields{
+						"Method": "main",
+						"Action": "connecting to mosquitto broker",
+						"Host":   config.AppConfig.Gateway,
+					}).Fatal("Mosquitto broker has failed to start")
+				}
+
+				log.Info("Mosquitto broker has started")
+
+			case item, ok := <-dispatcher.internalItemChannel:
+				if ok {
+					rfidBroker.Publish(item.Type, item.Value.([]byte))
+				} else {
+					dispatcher.internalItemChannel = nil
+				}
+
+			case err := <-providerOptions.OnError:
 				log.WithFields(log.Fields{
 					"Method": "main",
-					"Action": "connecting to mosquitto broker",
-					"Host":   config.AppConfig.Gateway,
-				}).Fatal("Mosquitto broker has failed to start")
+					"Action": "Receiving sensing error exiting",
+				}).Fatal(err)
 			}
-
-			log.Info("Mosquitto broker has started")
-
-		case item, ok := <-dispatcher.internalItemChannel:
-			if ok {
-				rfidBroker.Publish(item.Type, item.Value.([]byte))
-			} else {
-				dispatcher.internalItemChannel = nil
-			}
-
-		case err := <-options.OnError:
-			log.WithFields(log.Fields{
-				"Method": "main",
-				"Action": "Receiving sensing error exiting",
-			}).Fatal(err)
-
 		}
-
-	}
+	}()
 }
 
 // readCredentialsFile obtains the username/id and password from the specified path

@@ -41,6 +41,11 @@ type cloudConnRequest struct {
 	Auth   cloudConnAuth `json:"auth"`   // above struct
 }
 
+type cloudConnRequestNoAuth struct {
+	URL    string `json:"url"`    // destination
+	Method string `json:"method"` // GET
+}
+
 type cloudConnResponse struct {
 	Body       []byte
 	StatusCode int
@@ -63,13 +68,23 @@ func (ccr *CCRequest) ProxyThroughCloudConnector(ccURL, oauthURL, creds string) 
 	ccr.isProxied = true
 
 	// replace the downloadFunc with a POST to the cloud connector endpoint
-	ccr.requestFunc = func(client *http.Client, source string) (*http.Response, error) {
+	ccr.requestFunc = func(client *http.Client, source string, useAuth bool) (*http.Response, error) {
 		logrus.Debugf("Proxying request for %s through cloud connector", source)
 
-		request, err := json.Marshal(cloudConnRequest{URL: source, Method: "GET", Auth: auth})
+		var request []byte
+		var err error
+
+		logrus.Debugf("Use auth: %t", useAuth)
+		if useAuth == true {
+			request, err = json.Marshal(cloudConnRequest{URL: source, Method: "GET", Auth: auth})
+		} else {
+			request, err = json.Marshal(cloudConnRequestNoAuth{URL: source, Method: "GET"})
+		}
+
 		if err != nil {
 			return nil, errors.Wrapf(err, "unable to create cloud connector request")
 		}
+		logrus.Debugf("Request to cloudconnector: %s", request)
 
 		resp, err := client.Post(ccURL, "application/json", bytes.NewBuffer(request))
 		if err != nil {

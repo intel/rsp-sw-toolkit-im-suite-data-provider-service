@@ -1,0 +1,87 @@
+{
+  "loggingLevel": "info",
+  "telemetryEndpoint": "",
+  "telemetryDataStoreName": "InventoryManagement",
+  "responseLimit": 10000,
+  "port": "8080",
+
+  "testing" : {
+    "sampleString" : "value",
+    "sampleInt" : 123
+  },
+  "inventory-service": {
+    "serviceName": "RRP Inventory Service",
+    "databaseName": "inventory?authSource=admin",
+    "ageOuts": "front:10,back:60",
+    "epcFilters": ["30"],
+    "dailyInventoryPercentage": "0.01",
+    "probUnreadToRead": "0.20",
+    "probInStoreRead": "0.75",
+    "probExitError": "0.10",
+    "purgingDays": "90",
+    "serverReadTimeOutSeconds": 900,
+    "serverWriteTimeOutSeconds": 900,
+    "contextEventFilterProviderID": "rrp_handheld_filter",
+    "contraEpcPartition": 5,
+    "triggerRulesEndpoint": "/triggerrules",
+    "triggerRulesOnFixedTags": true,
+    "newerHandheldHavePriority": true
+  },
+  "item-finder-service" : {
+    "serviceName": "RRP Item Finder Service",
+    "descriptionMetadataFields" : ["sup_name","upc_desc"],
+    "confidenceThreshold": 0.1,
+    "contextBrokerRetries": 10,
+    "contextBrokerRetryInterval": 1
+  },
+  "mapping-sku-service" : {
+    "serviceName": "RRP Mapping Sku Service",
+    "databaseName": "mapping?authSource=admin"
+  },
+  "location-service" : {
+    "serviceName": "RRP Location Service",
+    "databaseName": "location?authSource=admin",
+    "reloadRulesEndpoint": "/reloadrules"
+  },
+  "cloud-connector-service" : {
+    "serviceName": "RRP Cloud Connector Service",
+    "httpsProxyURL": "http://proxy-us.intel.com:912"
+},
+  "rules-service" : {
+    "serviceName": "RRP Rules Service",
+    "loggingLevel": "info",
+    "databaseName": "rules?authSource=admin",
+    "locationEndpoint": "/locations",
+    "skusEndpoint": "/skus",
+    "inventoryEndpoint": "/inventory/tags",
+    "cloudConnectorEndpoint": "/callwebhook",
+    "port": "8085",
+    "ruleExecutionPeriodInSec": 300
+  },
+  "nordstrom-tran-service" : {
+    "serviceName": "RRP Nordstrom Tran Service",
+    "tranDataUrn": "urn:x-intel:context:nordstrom:trandata",
+    "trancodes": "1,22,24,32"
+  },
+  "configuration-service" : {
+    "serviceName": "RRP Configuration Service",
+    "configCommand": "urn:config:command:"
+  },
+  "rfid-data-exporter-service" : {
+    "serviceName": "RRP - RFID Data Exporter",
+    "inventoryEndpoint": "/inventory/tags",
+    "odataQuery": "",
+    "csvHeaderMapping": "",
+    "httpsProxyURL": "http://proxy-us.intel.com:912",
+    "exportFilePrefix": "tags",
+    "deliveryType": "email",
+    "emailHost": "smtp.gmail.com",
+    "emailPort": 587,
+    "emailUser": "rrpdataexport@gmail.com",
+    "emailPwd": "Intel123!",
+    "emailRecipients": "yutsung.jim.wang@intel.com",
+    "dropboxAPI": "https://content.dropboxapi.com/2/files/upload",
+    "dropboxAuthorization": "",
+    "dropboxPushPath": "/Test"
+  }
+}

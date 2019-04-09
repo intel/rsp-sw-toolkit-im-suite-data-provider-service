@@ -25,8 +25,8 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.impcloud.net/Responsive-Retail-Inventory/rfid-mqtt-provider-service/pkg/middlewares"
-	"github.impcloud.net/Responsive-Retail-Inventory/rfid-mqtt-provider-service/pkg/web"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/pkg/middlewares"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/pkg/web"
 )
 
 // Route struct holds attributes to declare routes

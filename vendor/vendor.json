@@ -3,10 +3,11 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "EM5mtWBrQSzTq/vaQpftxQ7UOxI=",
+			"checksumSHA1": "dF6ESYWAUfcC2X3rpdb+4KwUKAY=",
 			"path": "github.com/eclipse/paho.mqtt.golang",
-			"revision": "cb7eb9363b4469c601b1a714447653b720e4e43a",
-			"revisionTime": "2019-01-17T15:08:08Z"
+			"revision": "20337d8c394721c308cc6ec096990ee451a7cd7f",
+			"revisionTime": "2019-03-22T15:20:51Z",
+			"tree": true
 		},
 		{
 			"checksumSHA1": "bcihEmxEmUm3UKca45utc9eRyXY=",
@@ -43,6 +44,13 @@
 			"path": "github.com/sirupsen/logrus",
 			"revision": "44067abb194b1bc8b342e1f2120f8d3ea691b834",
 			"revisionTime": "2018-11-03T06:28:19Z"
+		},
+		{
+			"checksumSHA1": "FiO3/EazRt4Yec+tHd4f1qq6j/s=",
+			"path": "github.impcloud.net/Responsive-Retail-Core/utilities",
+			"revision": "564719abdd0744905575812ba5247794c83b90fb",
+			"revisionTime": "2019-01-03T18:12:43Z",
+			"tree": true
 		},
 		{
 			"checksumSHA1": "Xv51Y9yRqOsfJErAye/AE6mJQ+A=",
@@ -131,6 +139,24 @@
 			"revisionTime": "2018-09-26T22:07:39Z"
 		},
 		{
+			"checksumSHA1": "f3Y7JIZH61oMmp8nphqe8Mg+XoU=",
+			"path": "golang.org/x/net/internal/socks",
+			"revision": "74de082e2cca95839e88aa0aeee5aadf6ce7710f",
+			"revisionTime": "2019-03-26T08:46:22Z"
+		},
+		{
+			"checksumSHA1": "mCMW3hvbWFW1k5il9yyO7ELOdws=",
+			"path": "golang.org/x/net/proxy",
+			"revision": "74de082e2cca95839e88aa0aeee5aadf6ce7710f",
+			"revisionTime": "2019-03-26T08:46:22Z"
+		},
+		{
+			"checksumSHA1": "F+tqxPGFt5x7DKZakbbMmENX1oQ=",
+			"path": "golang.org/x/net/websocket",
+			"revision": "74de082e2cca95839e88aa0aeee5aadf6ce7710f",
+			"revisionTime": "2019-03-26T08:46:22Z"
+		},
+		{
 			"checksumSHA1": "kKuB1uPMgdvylnqWe7MKJPRtp2w=",
 			"path": "golang.org/x/sys/unix",
 			"revision": "a5c9d58dba9a56f97aaa86f55e638b718c5a6c42",
@@ -141,7 +167,12 @@
 			"path": "golang.org/x/sys/windows",
 			"revision": "a5c9d58dba9a56f97aaa86f55e638b718c5a6c42",
 			"revisionTime": "2018-11-28T10:54:42Z"
+		},
+		{
+			"path": "http://github.com/eclipse/paho.mqtt.golang",
+			"revision": "",
+			"tree": true
 		}
 	],
-	"rootPath": "github.impcloud.net/Responsive-Retail-Inventory/rfid-mqtt-provider-service"
+	"rootPath": "github.impcloud.net/Responsive-Retail-Inventory/data-provider-service"
 }

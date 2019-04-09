@@ -1,0 +1,7 @@
+{
+  "name" : "Default Config Unit Test",
+  "port": "8080",
+  "testing" : {
+    "val1" : 1
+  }
+}

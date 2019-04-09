@@ -16,6 +16,7 @@ package state
 type MqttTopicMapping struct {
 	UrlTemplate string   `json:"urlTemplate"`
 	Topics      []string `json:"topics"`
+	UseAuth     bool     `json:"useAuth"`
 }
 
 func parseMqttTopicMapping(topicMap interface{}) MqttTopicMapping {
@@ -25,6 +26,7 @@ func parseMqttTopicMapping(topicMap interface{}) MqttTopicMapping {
 	tm := MqttTopicMapping{
 		UrlTemplate: tmInterface["urlTemplate"].(string),
 		Topics:      make([]string, len(topicInterface)),
+		UseAuth:     tmInterface["useAuth"].(bool),
 	}
 
 	for i, t := range topicInterface {

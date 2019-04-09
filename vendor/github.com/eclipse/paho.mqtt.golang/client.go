@@ -344,11 +344,13 @@ func (c *client) reconnect() {
 		sleep = time.Duration(1 * time.Second)
 	)
 
-	for rc != 0 && c.status != disconnected {
+	for rc != 0 && atomic.LoadUint32(&c.status) != disconnected {
 		for _, broker := range c.options.Servers {
 			cm := newConnectMsgFromOptions(&c.options, broker)
 			DEBUG.Println(CLI, "about to write new connect msg")
+			c.Lock()
 			c.conn, err = openConnection(broker, c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders)
+			c.Unlock()
 			if err == nil {
 				DEBUG.Println(CLI, "socket connected to broker")
 				switch c.options.ProtocolVersion {
@@ -427,6 +429,8 @@ func (c *client) reconnect() {
 	go alllogic(c)
 	go outgoing(c)
 	go incoming(c)
+
+	c.resume(false)
 }
 
 // This function is only used for receiving a connack
@@ -566,8 +570,7 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	DEBUG.Println(CLI, "enter Publish")
 	switch {
 	case !c.IsConnected():
-		token.err = ErrNotConnected
-		token.flowComplete()
+		token.setError(ErrNotConnected)
 		return token
 	case c.connectionStatus() == reconnecting && qos == 0:
 		token.flowComplete()
@@ -583,8 +586,7 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	case []byte:
 		pub.Payload = payload.([]byte)
 	default:
-		token.err = errors.New("Unknown payload type")
-		token.flowComplete()
+		token.setError(fmt.Errorf("Unknown payload type"))
 		return token
 	}
 
@@ -608,13 +610,12 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	token := newToken(packets.Subscribe).(*SubscribeToken)
 	DEBUG.Println(CLI, "enter Subscribe")
 	if !c.IsConnected() {
-		token.err = ErrNotConnected
-		token.flowComplete()
+		token.setError(ErrNotConnected)
 		return token
 	}
 	sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
 	if err := validateTopicAndQos(topic, qos); err != nil {
-		token.err = err
+		token.setError(err)
 		return token
 	}
 	sub.Topics = append(sub.Topics, topic)
@@ -642,13 +643,12 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 	token := newToken(packets.Subscribe).(*SubscribeToken)
 	DEBUG.Println(CLI, "enter SubscribeMultiple")
 	if !c.IsConnected() {
-		token.err = ErrNotConnected
-		token.flowComplete()
+		token.setError(ErrNotConnected)
 		return token
 	}
 	sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
 	if sub.Topics, sub.Qoss, err = validateSubscribeMap(filters); err != nil {
-		token.err = err
+		token.setError(err)
 		return token
 	}
 
@@ -726,8 +726,7 @@ func (c *client) Unsubscribe(topics ...string) Token {
 	token := newToken(packets.Unsubscribe).(*UnsubscribeToken)
 	DEBUG.Println(CLI, "enter Unsubscribe")
 	if !c.IsConnected() {
-		token.err = ErrNotConnected
-		token.flowComplete()
+		token.setError(ErrNotConnected)
 		return token
 	}
 	unsub := packets.NewControlPacket(packets.Unsubscribe).(*packets.UnsubscribePacket)

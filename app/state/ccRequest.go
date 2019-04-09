@@ -38,7 +38,7 @@ type CCRequest struct {
 	client  *http.Client
 	// requestFunc is the function used when the ccRequest performs a GET request
 	// through the CloudConnector
-	requestFunc func(client *http.Client, source string) (*http.Response, error)
+	requestFunc func(client *http.Client, source string, useAuth bool) (*http.Response, error)
 	isProxied   bool
 }
 
@@ -64,12 +64,12 @@ func (ccr *CCRequest) SetClient(client *http.Client) {
 
 // PerformRequest issues a GET request to the specified destination and pushes the data into
 // the ItemChannel that will push the response into the
-func (ccr *CCRequest) PerformRequest(source string) (jsonResponse []byte, err error) {
+func (ccr *CCRequest) PerformRequest(source string, useAuth bool) (jsonResponse []byte, err error) {
 	logrus.Debugf("Attempting to send GET request file to %s.", source)
 
 	var resp *http.Response
 	if ccr.IsProxied() {
-		resp, err = ccr.requestFunc(ccr.client, source)
+		resp, err = ccr.requestFunc(ccr.client, source, useAuth)
 	} else {
 		resp, err = ccr.client.Get(source)
 	}
