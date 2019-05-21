@@ -1,0 +1,101 @@
+{
+  "name": "ASNToIMA",
+  "description": "Downloads ASN Data and publishes it to the IMA.",
+  "templateRefs": [ "cloudConn" ],
+  "tasks": {
+    "oauthConfig": {
+      "type": "json",
+      "raw": {
+        "useAuth": false,
+        "oauthEndpoint": "http://127.0.0.1:8812/authenticate",
+        "oauthCredentials": "username:password"
+      }
+    },
+    "getLastUpdated": {
+      "type": "get",
+      "raw": {
+        "name": "lastUpdated",
+        "default": 0
+      }
+    },
+    "createProxyRequest": {
+      "type": "template",
+      "raw": {
+        "namespaces": [ "ASN" ],
+        "template": "proxyCCRequest",
+        "initialData": {
+          "method": "GET",
+          "siteID": "small",
+          "baseURL": "http://192.168.99.100:9003/data"
+        }
+      },
+      "links": {
+        "oAuthCreds": { "from": "oauthConfig" },
+        "lastUpdated": { "from": "getLastUpdated" }
+      }
+    },
+    "getSKUData": {
+      "type": "http",
+      "raw": {
+        "maxRetries": 3,
+        "method": "POST",
+        "url": "http://192.168.99.100:9004/callwebhook"
+      },
+      "links": {
+        "body": { "from": "createProxyRequest" }
+      },
+      "stopOnEmpty": true
+    },
+    "extractCloudConnResponse": {
+      "type": "template",
+      "raw": {
+        "namespaces": [ "ASN" ],
+        "template": "extractCCResponse"
+      },
+      "links": {
+        "ccResponse": { "from": "getSKUData" }
+      }
+    },
+    "mqttCredentials": {
+      "type": "secret",
+      "raw": {
+        "name": "mqttCredentials.txt"
+      },
+      "errorIfEmpty": true
+    },
+    "splitMQTTCreds": {
+      "type": "template",
+      "raw": {
+        "namespaces": [ "mqttcreds" ],
+        "template": "splitMQTTCreds"
+      },
+      "links": {
+        "fileData": { "from": "mqttCredentials" }
+      }
+    },
+    "publishToIMA": {
+      "type": "mqtt",
+      "links": {
+        "message": { "from": "extractCloudConnResponse" },
+        "username": { "from": "splitMQTTCreds", "elem": "username" },
+        "password": { "from": "splitMQTTCreds", "elem": "password" }
+      },
+      "raw": {
+        "encrypt": true,
+        "skipCertVerify": true,
+        "topics": [ "rfid/gw/productmasterdata" ],
+        "endpoint": "192.168.99.100:9883",
+        "timeoutSecs": 100
+      }
+    },
+    "updateLastCompleted": {
+      "type": "put",
+      "raw": {
+        "name": "lastUpdated"
+      },
+      "links": {
+        "value": { "from": "publishToIMA", "using": "status", "elem": "CompletedAt" }
+      }
+    }
+  }
+}

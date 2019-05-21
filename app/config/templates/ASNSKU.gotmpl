@@ -1,0 +1,19 @@
+{{define "ccDest"}}
+    {{- /* construct the URL for the data request */ -}}
+    {{json .baseURL -}}
+    ?siteId={{block "getSiteID" .}}{{.siteID | urlquery -}}{{end -}}
+    &updateAfter={{int .lastUpdated | formatTime `2006-01-02T15:04:05.000Z` | urlquery -}}
+{{- end -}}
+
+{{define "ccBody"}}
+    {{- /* Output the response to match the old SAF data format. */ -}}
+    {"value":{"data":{{.|str}}}}
+{{- end -}}
+
+{{define "EdgeXDevice"}}{{.siteID}}{{end}}
+{{define "EdgeXReadings"}}
+    {
+    "name": "{{.dataType|str}}Data",
+    "value": "new {{.dataType|str}} data available"
+    }
+{{end}}

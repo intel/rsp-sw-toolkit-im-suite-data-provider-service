@@ -1,0 +1,150 @@
+{
+  "name": "SKU",
+  "description": "Downloads SKU data and publishes it on the productmasterdata topic.",
+  "timeoutSeconds": 60,
+  "trigger": {
+    "interval": {
+      "seconds": 120
+    }
+  },
+  "templateRefs": [ "cloudConn", "ASNSKU" ],
+  "tasks": {
+    "pipelineConfig": {
+      "type": "json",
+      "raw": {
+        "oauthConfig": {
+          "useAuth": false,
+          "oauthEndpoint": "http://127.0.0.1:8812/authenticate",
+          "oauthCredentials": "username:password"
+        },
+        "cloudConnEndpoint": "http://192.168.99.100:9004/callwebhook",
+        "dataEndpoint": "http://192.168.99.100:9003/skus",
+        "mqttEndpoint": "192.168.99.100:9883",
+        "mqttTopics": [ "rfid/gw/productmasterdata" ],
+        "schemaFile": "SKUSchema.json"
+      }
+    },
+    "mqttCredentials": {
+      "type": "secret",
+      "raw": {
+        "name": "mqttCredentials.txt"
+      },
+      "errorIfEmpty": true
+    },
+    "splitMQTTCreds": {
+      "type": "template",
+      "raw": {
+        "namespaces": [ "mqttcreds" ],
+        "template": "splitMQTTCreds"
+      },
+      "links": {
+        "fileData": { "from": "mqttCredentials" }
+      },
+      "disableResultLog": true
+    },
+    "getLastUpdated": {
+      "type": "get",
+      "raw": {
+        "name": "skus.lastUpdated",
+        "default": 0
+      }
+    },
+    "createSiteIDRequest": {
+      "type": "template",
+      "raw": {
+        "namespaces": [ "pixeom" ],
+        "template": "siteIDURL"
+      }
+    },
+    "requestSiteID": {
+      "type": "http",
+      "raw": {
+        "method": "GET",
+        "skipCertVerify": true
+      },
+      "links": {
+        "url": { "from": "createSiteIDRequest" }
+      }
+    },
+    "createProxyRequest": {
+      "type": "template",
+      "raw": {
+        "template": "proxyCCRequest",
+        "namespaces": [ "pixeom" ],
+        "initialData": {
+          "method": "GET"
+        }
+      },
+      "links": {
+        "lastUpdated": { "from": "getLastUpdated" },
+        "siteData": { "from": "requestSiteID" },
+        "oAuthCreds": { "from": "pipelineConfig", "elem": "oauthConfig" },
+        "baseURL": { "from": "pipelineConfig", "elem": "dataEndpoint" }
+      }
+    },
+    "getData": {
+      "type": "http",
+      "raw": {
+        "maxRetries": 3,
+        "method": "POST"
+      },
+      "links": {
+        "body": { "from": "createProxyRequest" },
+        "url": { "from": "pipelineConfig", "elem": "cloudConnEndpoint" }
+      }
+    },
+    "extractCloudConnResponse": {
+      "type": "template",
+      "raw": {
+        "template": "extractCCResponse"
+      },
+      "links": {
+        "ccResponse": { "from": "getData" }
+      },
+      "stopOnEmpty": true
+    },
+    "loadSchema": {
+      "type": "secret",
+      "links": {
+        "name": { "from": "pipelineConfig", "elem": "schemaFile" }
+      },
+      "errorIfEmpty": true
+    },
+    "validateData": {
+      "type": "validation",
+      "links": {
+        "content": { "from": "extractCloudConnResponse" },
+        "schema": { "from": "loadSchema" }
+      }
+    },
+    "publishToIMA": {
+      "type": "mqtt",
+      "ifSuccessful": [ "validateData" ],
+      "links": {
+        "message": { "from": "extractCloudConnResponse" },
+        "username": { "from": "splitMQTTCreds", "elem": "username" },
+        "password": { "from": "splitMQTTCreds", "elem": "password" },
+        "endpoint": { "from": "pipelineConfig", "elem": "mqttEndpoint" },
+        "topics": { "from": "pipelineConfig", "elem": "mqttTopics" }
+      },
+      "raw": {
+        "encrypt": true,
+        "skipCertVerify": true,
+        "timeoutSecs": 100
+      }
+    },
+    "updateLastCompleted": {
+      "type": "put",
+      "raw": {
+        "name": "skus.lastUpdated"
+      },
+      "links": {
+        "value": {
+          "from": "publishToIMA",
+          "using": "status",
+          "elem": "CompletedAt"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "name": "ASN",
+  "description": "Downloads ASN data and publishes it on the shippingmasterdata topic.",
+  "timeoutSeconds": 60,
+  "trigger": {
+    "interval": {
+      "seconds": 120
+    }
+  },
+  "templateRefs": [ "cloudConn", "ASNSKU" ],
+  "tasks": {
+    "pipelineConfig": {
+      "type": "json",
+      "raw": {
+        "oauthConfig": {
+          "useAuth": false,
+          "oauthEndpoint": "http://127.0.0.1:8812/authenticate",
+          "oauthCredentials": "username:password"
+        },
+        "cloudConnEndpoint": "http://192.168.99.100:9004/callwebhook",
+        "dataEndpoint": "http://192.168.99.100:9003/data",
+        "schemaFile": "schema-event-data-core.json"
+      }
+    },
+    "findCoreData": {
+      "type": "http",
+      "raw": {
+        "method": "GET",
+        "url": "http://192.168.99.101:8500/v1/catalog/service/edgex-core-data"
+      },
+      "errorOnEmpty": true
+    },
+    "extractCoreDataPort": {
+      "type": "template",
+      "raw": {
+        "template": "extractCoreDataPort",
+        "namespaces": [ "edgex" ]
+      },
+      "links": {
+        "serviceConfigs": { "from": "findCoreData" }
+      }
+    },
+    "getLastUpdated": {
+      "type": "get",
+      "raw": {
+        "source": "memoryStore",
+        "name": "asn.lastUpdated",
+        "default": 0
+      }
+    },
+    "createProxyRequest": {
+      "type": "template",
+      "raw": {
+        "template": "proxyCCRequest",
+        "namespaces": [ "cloudConn", "ASNSKU" ],
+        "initialData": {
+          "method": "GET",
+          "siteID": "someSite1"
+        }
+      },
+      "links": {
+        "oAuthCreds": { "from": "pipelineConfig", "elem": "oauthConfig" },
+        "lastUpdated": { "from": "getLastUpdated" },
+        "baseURL": { "from": "pipelineConfig", "elem": "dataEndpoint" }
+      }
+    },
+    "getData": {
+      "type": "http",
+      "raw": {
+        "maxRetries": 3,
+        "method": "POST"
+      },
+      "links": {
+        "body": { "from": "createProxyRequest" },
+        "url": { "from": "pipelineConfig", "elem": "cloudConnEndpoint" }
+      }
+    },
+    "extractCloudConnResponse": {
+      "type": "template",
+      "raw": {
+        "template": "EdgeXEvent",
+        "namespaces": [ "cloudConn", "edgex", "ASNSKU" ],
+        "initialData": {
+          "siteID": "rrs-gateway",
+          "dataType": "ASN"
+        }
+      },
+      "links": {
+        "ccResponse": { "from": "getData" }
+      }
+    },
+    "loadSchema": {
+      "type": "secret",
+      "links": {
+        "name": { "from": "pipelineConfig", "elem": "schemaFile" }
+      },
+      "errorIfEmpty": true
+    },
+    "validateData": {
+      "type": "validation",
+      "links": {
+        "content": { "from": "extractCloudConnResponse" },
+        "schema": { "from": "loadSchema" }
+      }
+    },
+    "publish": {
+      "type": "http",
+      "ifSuccessful": [ "validateData" ],
+      "raw": {
+        "method": "POST"
+      },
+      "links": {
+        "body": { "from": "extractCloudConnResponse" },
+        "url": { "from": "extractCoreDataPort" }
+      }
+    },
+    "updateLastCompleted": {
+      "type": "put",
+      "raw": {
+        "name": "asn.lastUpdated"
+      },
+      "links": {
+        "value": {
+          "from": "publish",
+          "using": "status",
+          "elem": "CompletedAt"
+        }
+      }
+    }
+  }
+}

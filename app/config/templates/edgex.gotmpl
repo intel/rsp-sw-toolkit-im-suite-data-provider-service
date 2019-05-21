@@ -1,0 +1,14 @@
+{{define "EdgeXEvent" -}}
+    {{- /* This template outputs a JSON-formatted EdgeX event. */ -}}
+    {"origin": {{timestamp}},
+    "device": "{{block "EdgeXDevice" .}}{{or .device "unknown"}}{{end}}",
+    "readings": [ {{- block "EdgeXReadings" .}}{{or .readings ""}}{{end -}}
+    ]}
+{{- end -}}
+
+{{define "extractCoreDataPort" -}}
+    "http://edgex-core-data:
+    {{- with index (json .serviceConfigs) 0 -}}
+        {{.ServicePort}}/api/v1/event
+    {{- end}}"
+{{- end -}}

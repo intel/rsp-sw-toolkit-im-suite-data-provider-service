@@ -4,24 +4,8 @@
   "telemetryEndpoint": "",
   "telemetryDataStoreName": "",
   "port": "8080",
-  "baseEndpoint": "https://api.myjson.com/bins",
-  "mqttTopicMapping": {
-    "skumapping": {
-      "urlTemplate": "/api/getInventory?siteId={{siteID}}&from={{lastQuery}}",
-      "topics": ["rfid/gw/productmasterdata"],
-      "useAuth": true
-    }
-  },
-  "pollPeriodSecs": 30,
-  "failureRetryPeriodSecs": 10,
-  "failureRetries": 3,
-  "proxyThroughCloudConnector": false,
-  "cloudConnectorEndpoint": "",
-  "oauthEndpoint": "http://127.0.0.1:8812/authenticate",
-  "oauthCredentials": "username:password",
-  "encryptGatewayConnection": false,
-  "gatewayCredentialsPath": "",
-  "gateway": "0.0.0.0:1883",
-  "secureMode" : false,
-  "skipCertVerify" : false
+  "pipelinesDir": "app/config/pipelines",
+  "templatesDir": "app/config/templates",
+  "pipelineNames": ["ASNPipeline.json", "SKUPipeline.json"],
+  "secretsPath": "/run/secrets"
 }

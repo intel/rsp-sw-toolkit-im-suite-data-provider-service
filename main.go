@@ -21,42 +21,24 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/pkg/coe"
-	"io/ioutil"
+	"github.com/pkg/errors"
+	"github.impcloud.net/RSP-Inventory-Suite/goplumber"
+	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/app/routes"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"time"
-
-	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/app/broker"
-	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/app/state"
-	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/pkg/middlewares"
-	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/pkg/web"
 
 	log "github.com/sirupsen/logrus"
 	"github.impcloud.net/Responsive-Retail-Core/utilities/go-metrics"
 	reporter "github.impcloud.net/Responsive-Retail-Core/utilities/go-metrics-influxdb"
 	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/app/config"
-	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/app/routes"
 )
 
-type localDispatcher struct {
-	// Internal for the dispatcher goroutine
-	internalErrChannel  broker.ErrorChannel
-	internalItemChannel broker.ProviderItemChannel
-
-	itemChannels map[string][]*broker.ItemChannel
-	errChannels  map[string][]*broker.ErrorChannel
-	// Synchronize add/remove access to the channel maps
-	chanMutex sync.Mutex
-}
-
 func main() {
-	mConfigurationError := metrics.GetOrRegisterGauge("RFIDConfig.Main.ConfigurationError", nil)
-	mPollingError := metrics.GetOrRegisterGauge("RFIDConfig.Main.PollingSetupError", nil)
+	mConfigurationError := metrics.GetOrRegisterGauge("DataProvider.Main.ConfigurationError", nil)
+	mPipelineErr := metrics.GetOrRegisterGauge("DataProvider.Main.PipelineSetupError", nil)
 
 	// Load config variables
 	err := config.InitConfig()
@@ -64,7 +46,7 @@ func main() {
 
 	setLogLevel()
 	healthCheck(config.AppConfig.Port)
-	initMetrics()
+	// initMetrics()
 
 	logMain := func(args ...interface{}) {
 		log.WithFields(log.Fields{
@@ -73,122 +55,42 @@ func main() {
 		}).Info(args...)
 	}
 
-	logMain("Starting RFID Config Service...")
-
-	// first things first, lets get the coe device information
-	if err := coe.InitializeDeviceInfo(); err != nil {
-		// we do not want to exit, just warn
-		log.Warn("Unable to retrieve coe device information")
-	}
+	logMain("Starting Service...")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	log.Debug("Starting poller.")
-	poller, err := state.NewPoller(config.AppConfig)
-	log.Debug("Starting RFID broker")
-	initBroker(poller)
-	pollNow, err := poller.PollAsync(ctx, config.AppConfig)
-	exitIfError(err, mPollingError, "Failed to start polling.")
+	exitIfError(loadPipelines(ctx), mPipelineErr, "Failed to start pipelines.")
 
-	// create a route for force-polling the server
 	router := routes.NewRouter()
-	pollNowHandler := web.Handler(func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-		pollNow()
-		web.Respond(ctx, w, "sending poll request", http.StatusOK)
-		return nil
-	})
-	pollNowHandler = middlewares.Recover(middlewares.Logger(pollNowHandler))
-	router.Methods("POST").Path("/pollnow").
-		Name("PollNow").Handler(pollNowHandler)
-
 	startWebServer(router)
+
 	log.WithField("Method", "main").Info("Completed.")
 }
 
-func initBroker(pllr *state.Poller) {
-	onBrokerStarted := make(broker.BrokerStartedChannel, 1)
-	onBrokerError := make(broker.ErrorChannel, 1)
-
-	providerOptions := broker.MosquittoProviderOptions{
-		Gateway:                  config.AppConfig.Gateway,
-		Topics:                   []string{"inventory"}, //Add list of topics to listen and publish to here
-		AllowSelfSignedCerts:     config.AppConfig.SkipCertVerify,
-		EncryptGatewayConnection: config.AppConfig.EncryptGatewayConnection,
-		OnStarted:                onBrokerStarted,
-		OnError:                  onBrokerError,
+func loadPipelines(ctx context.Context) error {
+	log.Debug("Starting pipeline runner.")
+	runner := goplumber.NewPipelineRunner()
+	connections := goplumber.PipelineConnector{
+		TemplateLoader: goplumber.NewFSLoader(config.AppConfig.TemplatesDir),
+		KVData:         goplumber.NewMemoryStore(),
+		Secrets:        goplumber.NewDockerSecretsStore(config.AppConfig.SecretsPath),
 	}
 
-	if config.AppConfig.GatewayCredentialsPath != "" {
-		username, password, err := readCredentialsFile(config.AppConfig.GatewayCredentialsPath)
+	pipedata := goplumber.NewFSLoader(config.AppConfig.PipelinesDir)
+	log.Debug("Loading pipelines")
+	for _, name := range config.AppConfig.PipelineNames {
+		data, err := pipedata.GetFile(name)
 		if err != nil {
-			log.Fatalln("Credentials file error:", err)
+			return errors.Wrapf(err, "failed to load pipeline %s", name)
 		}
-
-		providerOptions.Username = username
-		providerOptions.Password = password
-	}
-
-	var rfidBroker *broker.MosquittoProvider
-	rfidBroker = broker.NewMosquittoClient(&providerOptions)
-
-	var dispatcher localDispatcher
-	dispatcher.internalErrChannel = make(broker.ErrorChannel, 10)
-	dispatcher.internalItemChannel = make(broker.ProviderItemChannel, 10)
-
-	pllr.SetDispatcherChannels(&dispatcher.internalErrChannel, &dispatcher.internalItemChannel)
-
-	rfidBroker.Start(dispatcher.internalItemChannel, dispatcher.internalErrChannel)
-
-	go func() {
-
-		for {
-			select {
-			case started := <-providerOptions.OnStarted:
-				if !started.Started {
-					log.WithFields(log.Fields{
-						"Method": "main",
-						"Action": "connecting to mosquitto broker",
-						"Host":   config.AppConfig.Gateway,
-					}).Fatal("Mosquitto broker has failed to start")
-				}
-
-				log.Info("Mosquitto broker has started")
-
-			case item, ok := <-dispatcher.internalItemChannel:
-				if ok {
-					rfidBroker.Publish(item.Type, item.Value.([]byte))
-				} else {
-					dispatcher.internalItemChannel = nil
-				}
-
-			case err := <-providerOptions.OnError:
-				log.WithFields(log.Fields{
-					"Method": "main",
-					"Action": "Receiving sensing error exiting",
-				}).Fatal(err)
-			}
+		p, err := goplumber.NewPipeline(data, connections)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load pipeline %s", name)
 		}
-	}()
-}
-
-// readCredentialsFile obtains the username/id and password from the specified path
-// the file format is: "<username/id>\t<password>"
-func readCredentialsFile(path string) (id, password string, err error) {
-	buf, err := ioutil.ReadFile(path)
-	if err != nil {
-		return
+		runner.AddPipeline(ctx, p)
 	}
-
-	contents := strings.SplitN(string(buf), "\t", 2)
-	if len(contents) == 2 {
-		id = strings.TrimSpace(contents[0])
-		password = strings.TrimSpace(contents[1])
-	} else {
-		err = fmt.Errorf("invalid credentials file (%s) contents", path)
-	}
-
-	return
+	return nil
 }
 
 func startWebServer(router http.Handler) {

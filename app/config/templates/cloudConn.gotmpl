@@ -1,0 +1,43 @@
+{{define "proxyCCRequest"}}
+    {{- /*
+    This template constructs a proxy request expected by the cloud connector.
+    The destination URL can be specified as a raw value named destinationURL,
+    or by defining a template named "ccDest".
+     */ -}}
+    {{- $oauth := json .oAuthCreds -}}
+
+    {
+    "url": "{{block "ccDest" $}}{{str $.destinationURL}}{{end}}",
+    "method": "{{or (str $.method) "GET"}}"
+    {{- if $oauth.useAuth -}}
+        ,
+        "auth": {
+        "authtype": "oauth2",
+        "endpoint": "{{$oauth.oauthEndpoint}}",
+        "data": "{{$oauth.oauthCredentials}}"
+        }
+    {{- end -}}
+    }
+{{- end -}}
+
+{{define "extractCCResponse"}}
+    {{- /*
+    This template extracts the CC response.
+
+    If the response has a status code in the 2xx range, it extracts and decodes
+    the body content and passes it to the template 'ccResponse', which simply
+    prints it by default.
+
+    If the status code not is 2xx, it calls 'ccBadResponse' with the original
+    response content, which default forces an error with the status code.
+    */ -}}
+    {{- with json .ccResponse -}}
+        {{- if (or (lt (int .statuscode) 200) (gt (int .statuscode) 299)) -}}
+            {{block "ccBadResponse" . -}}
+                {{err "cloud connector returned non-2xx status: %d" .statuscode}}
+            {{- end}}
+        {{- else -}}
+            {{block "ccBody" .body | str | dec64 -}}{{. | str}}{{end}}
+        {{- end -}}
+    {{- end -}}
+{{- end -}}

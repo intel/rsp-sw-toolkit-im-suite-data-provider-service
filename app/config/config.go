@@ -26,183 +26,56 @@ import (
 	"github.impcloud.net/Responsive-Retail-Core/utilities/configuration"
 )
 
-type (
-	ServiceConfig struct {
-		ServiceName            string
-		LoggingLevel           string
-		TelemetryEndpoint      string
-		TelemetryDataStoreName string
-		Port                   string
+// ServiceConfig holds the service configuration.
+type ServiceConfig struct {
+	ServiceName            string
+	LoggingLevel           string
+	TelemetryEndpoint      string
+	TelemetryDataStoreName string
+	Port                   string
 
-		// BaseEndpoint is the template used for the base endpoint.
-		BaseEndpoint string
-		// MqttTopicMap keeps the key:value relationship between each endpoint
-		// and the MQTT topic in which the result will be published
-		MqttTopicMap map[string]interface{}
-		// PollPeriodSecs is the wait time between checks for new manifests if
-		// the last attempt succeeded.
-		PollPeriodSecs uint
-		// FailureRetryPeriodSecs is the amount of time to wait before polling
-		// again if the last attempt failed.
-		FailureRetryPeriodSecs uint
-		// FailureRetries is the number of failures before retrying gives up.
-		FailureRetries uint
-		// ProxyThroughCloudConnector, if true, will enable the CC on downloads
-		// and will require valid cloudConnectorEndpoint and oauth config settings
-		ProxyThroughCloudConnector bool
-		// CloudConnectorEndpoint is the endpoint of the cloud connector service,
-		// through which downloads should be proxied (if enabled)
-		CloudConnectorEndpoint string
-		// OAuthEndpoint is the endpoint the cloud connector should use to get
-		// an OAuth token
-		OAuthEndpoint string
-		// OAuthCredentials is the "username:password" pair (presumably) that
-		// the cloud connector should use when getting an OAuth token
-		OAuthCredentials string
-		// EncryptGatewayConnection, if true, will connect to the MQTT broker
-		// in the broker using TLS, or TCP if false.
-		EncryptGatewayConnection bool
-		// GatewayCredentialsPath is the path where the gateway credentials to
-		// connect with the MQTT broker will be located
-		GatewayCredentialsPath string
-		// Gateway is the string value with the IP address of the MQTT broker
-		// in the gateway
-		Gateway string
-		// DeviceInfoCacheFile is the filename to use for caching the COE device information
-		DeviceInfoCacheFile string
+	// PipelinesDir is a directory containing pipeline configurations.
+	PipelinesDir string
+	// PipelineNames is a list of filenames to load from the pipeline directory.
+	PipelineNames []string
+	// TemplatesDir is a directory containing template namespace files.
+	TemplatesDir string
+	// SecretsPath is the path to docker secrets, usually /run/secrets.
+	SecretsPath string
+}
 
-		SecureMode, SkipCertVerify bool
-	}
-)
+// AppConfig exports a package-level configuration object.
+var AppConfig = ServiceConfig{}
 
-// AppConfig exports all config variables
-var AppConfig ServiceConfig
-
-// InitConfig loads application variables
+// InitConfig loads package-level configuration.
 func InitConfig() error {
-
-	AppConfig = ServiceConfig{}
-
-	var err error
-
 	config, err := configuration.NewConfiguration()
 	if err != nil {
 		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
 	}
 	log.Println(config)
 
-	AppConfig.ServiceName, err = config.GetString("serviceName")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-
-	// Set "debug" for development purposes. Nil for Production.
-	AppConfig.LoggingLevel, err = config.GetString("loggingLevel")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-
-	AppConfig.TelemetryEndpoint, err = config.GetString("telemetryEndpoint")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-
-	AppConfig.TelemetryDataStoreName, err = config.GetString("telemetryDataStoreName")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-
-	AppConfig.Port, err = config.GetString("port")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-
-	AppConfig.BaseEndpoint, err = config.GetString("baseEndpoint")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-
-	AppConfig.MqttTopicMap, err = config.GetNestedJSON("mqttTopicMapping")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-
-	pollPeriod, err := config.GetInt("pollPeriodSecs")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-	if pollPeriod <= 0 {
-		return errors.New("pollPeriodSecs must be >0")
-	}
-	AppConfig.PollPeriodSecs = uint(pollPeriod)
-
-	retryPeriod, err := config.GetInt("failureRetryPeriodSecs")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-	if retryPeriod <= 0 {
-		return errors.New("failureRetryPeriodSecs must be >0")
-	}
-	if retryPeriod > pollPeriod {
-		return errors.New("failureRetryPeriodSecs must be <= pollPeriod")
-	}
-	AppConfig.FailureRetryPeriodSecs = uint(retryPeriod)
-
-	retryLimit, err := config.GetInt("failureRetries")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-	if retryLimit <= 0 {
-		return errors.New("failureRetryPeriodSecs must be >0")
-	}
-	AppConfig.FailureRetries = uint(retryLimit)
-
-	AppConfig.ProxyThroughCloudConnector, err = config.GetBool("proxyThroughCloudConnector")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-	if AppConfig.ProxyThroughCloudConnector {
-		AppConfig.CloudConnectorEndpoint, err = config.GetString("cloudConnectorEndpoint")
+	for _, required := range []struct {
+		v    *string
+		name string
+	}{
+		{v: &AppConfig.ServiceName, name: "serviceName"},
+		{v: &AppConfig.LoggingLevel, name: "loggingLevel"},
+		{v: &AppConfig.TelemetryEndpoint, name: "telemetryEndpoint"},
+		{v: &AppConfig.TelemetryDataStoreName, name: "telemetryDataStoreName"},
+		{v: &AppConfig.Port, name: "port"},
+		{v: &AppConfig.PipelinesDir, name: "pipelinesDir"},
+		{v: &AppConfig.TemplatesDir, name: "templatesDir"},
+		{v: &AppConfig.SecretsPath, name: "secretsPath"},
+	} {
+		s, err := config.GetString(required.name)
 		if err != nil {
 			return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
 		}
-		AppConfig.OAuthEndpoint, err = config.GetString("oauthEndpoint")
-		if err != nil {
-			return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-		}
-		AppConfig.OAuthCredentials, err = config.GetString("oauthCredentials")
-		if err != nil {
-			return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-		}
+		*required.v = s
 	}
 
-	AppConfig.EncryptGatewayConnection, err = config.GetBool("encryptGatewayConnection")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-
-	AppConfig.GatewayCredentialsPath, err = config.GetString("gatewayCredentialsPath")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-
-	AppConfig.Gateway, err = config.GetString("gateway")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-
-	AppConfig.DeviceInfoCacheFile, err = config.GetString("deviceInfoCacheFile")
-	if err != nil {
-		AppConfig.DeviceInfoCacheFile = "/mnt/hostconfig/coe_device_info.json"
-		log.Printf("Warning: deviceInfoCacheFile was not specified, using default value: %s", AppConfig.DeviceInfoCacheFile)
-	}
-
-	AppConfig.SecureMode, err = config.GetBool("secureMode")
-	if err != nil {
-		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
-	}
-
-	AppConfig.SkipCertVerify, err = config.GetBool("skipCertVerify")
+	AppConfig.PipelineNames, err = config.GetStringSlice("pipelineNames")
 	if err != nil {
 		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
 	}
