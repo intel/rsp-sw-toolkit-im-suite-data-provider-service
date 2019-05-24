@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
@@ -22,6 +23,7 @@ func init() {
 
 var testPipeLoader = goplumber.NewFSLoader("config/pipelines")
 var testTmplLoader = goplumber.NewFSLoader("config/templates")
+var testDataLoader = goplumber.NewFSLoader("testdata")
 var testMemStore = goplumber.NewMemoryStore()
 
 type overrideStore struct {
@@ -39,26 +41,38 @@ func (os overrideStore) Get(ctx context.Context, key string) ([]byte, bool, erro
 }
 
 var testSecretStore = overrideStore{
-	PipelineStore: goplumber.NewDockerSecretsStore("config/testdata"),
-	overrides: map[string][]byte{
-		"asnPipelineConfig.json": []byte(`{}`),
-	},
+	PipelineStore: goplumber.NewDockerSecretsStore("testdata"),
+	overrides:     map[string][]byte{},
 }
 
 func getTestData(w *expect.TWrapper, filename string) []byte {
 	w.Helper()
-	return w.ShouldHaveResult(testPipeLoader.GetFile(filename)).([]byte)
+	return w.ShouldHaveResult(testDataLoader.GetFile(filename)).([]byte)
 }
 
 func getTestPipeline(w *expect.TWrapper, name, addr string) goplumber.Pipeline {
 	w.Helper()
-	conf := getTestData(w, name)
+	conf := w.ShouldHaveResult(testPipeLoader.GetFile(name)).([]byte)
 	pcon := goplumber.PipelineConnector{
 		TemplateLoader: testTmplLoader,
 		KVData:         testMemStore,
 		Secrets:        testSecretStore,
 	}
-	testSecretStore.overrides["asnPipelineConfig.json"] = []byte(fmt.Sprintf(`
+	testSecretStore.overrides["asnPipelineConfig.json"] =
+		[]byte(fmt.Sprintf(`
+{
+  "siteID": "rrs-gateway",
+  "dataEndpoint": "http://example.com/data",
+  "cloudConnEndpoint": "%[1]s/cloudconn",
+  "coreDataLookup": "%[1]s/core-data",
+  "mqttEndpoint": "mosquitto-server:9883",
+  "mqttTopics": [ "rfid/gw/shippingmasterdata" ],
+  "dataSchemaFile": "ASNSchema.json",
+  "oauthConfig": { "useAuth": false }
+}
+`, addr))
+	testSecretStore.overrides["skuPipelineConfig.json"] =
+		[]byte(fmt.Sprintf(`
 {
   "siteID": "rrs-gateway",
   "dataEndpoint": "http://example.com/data",
@@ -66,7 +80,7 @@ func getTestPipeline(w *expect.TWrapper, name, addr string) goplumber.Pipeline {
   "coreDataLookup": "%[1]s/core-data",
   "mqttEndpoint": "mosquitto-server:9883",
   "mqttTopics": [ "rfid/gw/productmasterdata" ],
-  "dataSchemaFile": "ASNSchema.json",
+  "dataSchemaFile": "SKUSchema.json",
   "oauthConfig": { "useAuth": false }
 }
 `, addr))
@@ -118,22 +132,50 @@ func testPipeline(w *expect.TWrapper, p *goplumber.Pipeline, memname string) {
 }
 
 func TestSKU(t *testing.T) {
-	// this test pulls 'SKU' data from an endpoint and publish it to MQTT
 	w := expect.WrapT(t).StopOnMismatch()
-	withDataServer(w, map[string][]byte{
-		"/core-data": []byte(``),
-		"/cloudconn": []byte(``),
-	}, func(addr string) {
+	skuData := base64.StdEncoding.EncodeToString(getTestData(w, "skuData.json"))
+
+	dataMap := map[string][]byte{
+		"/cloudconn":    []byte(fmt.Sprintf(`{"statuscode":200,"body":"%s"}`, skuData)),
+		"/api/v1/event": []byte(``), // POSTed to
+	}
+	coreData := `"ID":"3325fece-83ca-8736-bc88-bda1d9d56caf","Node":"edgex-core-consul","Address":"127.0.0.1","Datacenter":"dc1","TaggedAddresses":{"lan":"127.0.0.1","wan":"127.0.0.1"},"NodeMeta":{"consul-network-segment":""},"ServiceID":"edgex-core-data","ServiceName":"edgex-core-data","ServiceTags":[],"ServiceMeta":{},"ServiceEnableTagOverride":false,"CreateIndex":15,"ModifyIndex":15`
+	results := withDataServer(w, dataMap, func(addr string) {
+		serverURL := w.ShouldHaveResult(url.Parse(addr)).(*url.URL)
+		dataMap["/core-data"] = []byte(fmt.Sprintf(
+			`[{"ServicePort":"%s","ServiceAddress":"%s",%s}]`,
+			serverURL.Port(), serverURL.Hostname(), coreData))
 		p := getTestPipeline(w, "SKUPipeline.json", addr)
 		testPipeline(w, &p, "skus.lastUpdated")
 	})
+
+	w.ShouldContain(results, []string{"/api/v1/event", "/cloudconn"})
+
+	type edgexReading struct {
+		Name  string
+		Value string
+	}
+	type edgexEvent struct {
+		Origin   int
+		Device   string
+		Readings []edgexReading
+	}
+	var ee edgexEvent
+	w.Logf("%s", results["/api/v1/event"])
+	w.ShouldSucceed(json.Unmarshal(results["/api/v1/event"], &ee))
+	w.ShouldBeTrue(ee.Origin > 0)
+	w.ShouldBeEqual(ee.Device, "rrs-gateway")
+	w.ShouldHaveLength(ee.Readings, 1)
+	w.ShouldBeEqual(ee.Readings[0], edgexReading{"new_SKU_data", "new ASN data available"})
 }
 
 func TestASN(t *testing.T) {
 	w := expect.WrapT(t).StopOnMismatch()
+	asnData := base64.StdEncoding.EncodeToString(getTestData(w, "asnData.json"))
+
 	dataMap := map[string][]byte{
-		"/cloudconn":    []byte(`{"statuscode":200,"body":"WwogIHsKICAgICJzaXRlSWQiOiAic2l0ZUlkMTc5OTgiLAogICAgIml0ZW1zIjogWwogICAgICB7CiAgICAgICAgIml0ZW1HdGluIjogIjAwMDAwMDAwMDQyMDAyIiwKICAgICAgICAiaXRlbUlkIjogIjQyMDAyIiwKICAgICAgICAiaXRlbUVwY3MiOiBbICI5OTAwMDAwMDk2MjEwMDAwMDAwNDIwMDIiIF0KICAgICAgfSwgewogICAgICAgICJpdGVtR3RpbiI6ICIwMDAwMDAwMDA0NjA0OCIsCiAgICAgICAgIml0ZW1JZCI6ICI0NjA0OCIsCiAgICAgICAgIml0ZW1FcGNzIjogWyAiOTkwMDAwMDA5NjI0MTAwMDAwMDQ2MDQ4IiBdCiAgICAgIH0KICAgIF0sCiAgICAiZXZlbnRUaW1lIjogIjIwMTgtMTItMjJUMjA6NDk6MTEuNDc4WiIsCiAgICAiYXNuSWQiOiAiMTMwNTE4MTIyM01DRDE3OTk4MTYzNjYyMzgtMDAwIgogIH0KXQo="}`),
-		"/api/v1/event": []byte(``),
+		"/cloudconn":    []byte(fmt.Sprintf(`{"statuscode":200,"body":"%s"}`, asnData)),
+		"/api/v1/event": []byte(``), // POSTed to
 	}
 	coreData := `"ID":"3325fece-83ca-8736-bc88-bda1d9d56caf","Node":"edgex-core-consul","Address":"127.0.0.1","Datacenter":"dc1","TaggedAddresses":{"lan":"127.0.0.1","wan":"127.0.0.1"},"NodeMeta":{"consul-network-segment":""},"ServiceID":"edgex-core-data","ServiceName":"edgex-core-data","ServiceTags":[],"ServiceMeta":{},"ServiceEnableTagOverride":false,"CreateIndex":15,"ModifyIndex":15`
 	results := withDataServer(w, dataMap, func(addr string) {

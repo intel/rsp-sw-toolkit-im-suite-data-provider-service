@@ -1,27 +1,43 @@
 {
   "name": "SKU",
-  "description": "Downloads SKU data and publishes it on the productmasterdata topic.",
+  "description": "Downloads data and publishes it to an MQTT topic and alerts EdgeX.",
   "timeoutSeconds": 60,
   "trigger": {
     "interval": {
       "seconds": 120
     }
   },
-  "templateRefs": [ "cloudConn", "ASNSKU" ],
   "tasks": {
     "pipelineConfig": {
-      "type": "json",
+      "type": "secret",
       "raw": {
-        "oauthConfig": {
-          "useAuth": false,
-          "oauthEndpoint": "http://127.0.0.1:8812/authenticate",
-          "oauthCredentials": "username:password"
-        },
-        "cloudConnEndpoint": "http://192.168.99.100:9004/callwebhook",
-        "dataEndpoint": "http://192.168.99.100:9003/skus",
-        "mqttEndpoint": "192.168.99.100:9883",
-        "mqttTopics": [ "rfid/gw/productmasterdata" ],
-        "schemaFile": "SKUSchema.json"
+        "name": "skuPipelineConfig.json"
+      },
+      "errorIfEmpty": true
+    },
+    "coreDataConfig": {
+      "type": "http",
+      "description": "Requests the Core Data port number from the service discovery service.",
+      "raw": {
+        "method": "GET"
+      },
+      "links": {
+        "url": { "from": "pipelineConfig", "elem": "coreDataLookup" }
+      },
+      "errorOnEmpty": true
+    },
+    "coreDataURL": {
+      "type": "template",
+      "description": "Parses the output from the service discovery request to extract the port number.",
+      "raw": {
+        "template": "createEdgeXURL",
+        "namespaces": [ "edgex" ],
+        "initialData": {
+          "api": "/api/v1/event"
+        }
+      },
+      "links": {
+        "serviceConfigs": { "from": "coreDataConfig" }
       }
     },
     "mqttCredentials": {
@@ -42,86 +58,72 @@
       },
       "disableResultLog": true
     },
-    "getLastUpdated": {
+    "lastUpdated": {
       "type": "get",
       "raw": {
+        "source": "memoryStore",
         "name": "skus.lastUpdated",
         "default": 0
       }
     },
-    "createSiteIDRequest": {
+    "proxyRequest": {
       "type": "template",
-      "raw": {
-        "namespaces": [ "pixeom" ],
-        "template": "siteIDURL"
-      }
-    },
-    "requestSiteID": {
-      "type": "http",
-      "raw": {
-        "method": "GET",
-        "skipCertVerify": true
-      },
-      "links": {
-        "url": { "from": "createSiteIDRequest" }
-      }
-    },
-    "createProxyRequest": {
-      "type": "template",
+      "description": "Creates a request for the Cloud Connector to get the data",
       "raw": {
         "template": "proxyCCRequest",
-        "namespaces": [ "pixeom" ],
+        "namespaces": [ "cloudConn", "ASNSKU" ],
         "initialData": {
           "method": "GET"
         }
       },
       "links": {
-        "lastUpdated": { "from": "getLastUpdated" },
-        "siteData": { "from": "requestSiteID" },
         "oAuthCreds": { "from": "pipelineConfig", "elem": "oauthConfig" },
-        "baseURL": { "from": "pipelineConfig", "elem": "dataEndpoint" }
+        "lastUpdated": { "from": "lastUpdated" },
+        "baseURL": { "from": "pipelineConfig", "elem": "dataEndpoint" },
+        "siteID": { "from": "pipelineConfig", "elem": "siteID" }
       }
     },
-    "getData": {
+    "incomingData": {
       "type": "http",
       "raw": {
         "maxRetries": 3,
         "method": "POST"
       },
       "links": {
-        "body": { "from": "createProxyRequest" },
+        "body": { "from": "proxyRequest" },
         "url": { "from": "pipelineConfig", "elem": "cloudConnEndpoint" }
       }
     },
-    "extractCloudConnResponse": {
+    "cloudConnResponse": {
       "type": "template",
       "raw": {
-        "template": "extractCCResponse"
+        "template": "extractCCResponse",
+        "namespaces": [ "cloudConn", "ASNSKU" ]
       },
       "links": {
-        "ccResponse": { "from": "getData" }
+        "ccResponse": { "from": "incomingData" }
       },
       "stopOnEmpty": true
     },
-    "loadSchema": {
+    "dataSchema": {
       "type": "secret",
       "links": {
-        "name": { "from": "pipelineConfig", "elem": "schemaFile" }
+        "name": { "from": "pipelineConfig", "elem": "dataSchemaFile" }
       },
       "errorIfEmpty": true
     },
-    "validateData": {
+    "dataValidation": {
       "type": "validation",
       "links": {
-        "content": { "from": "extractCloudConnResponse" },
-        "schema": { "from": "loadSchema" }
+        "content": { "from": "cloudConnResponse" },
+        "schema": { "from": "dataSchema" }
       }
     },
     "publishToIMA": {
       "type": "mqtt",
-      "ifSuccessful": [ "validateData" ],
+      "ifSuccessful": [ "dataValidation" ],
       "links": {
-        "message": { "from": "extractCloudConnResponse" },
+        "message": { "from": "cloudConnResponse" },
         "username": { "from": "splitMQTTCreds", "elem": "username" },
         "password": { "from": "splitMQTTCreds", "elem": "password" },
         "endpoint": { "from": "pipelineConfig", "elem": "mqttEndpoint" },
@@ -133,6 +135,30 @@
         "timeoutSecs": 100
       }
     },
+    "edgeXEvent": {
+      "type": "template",
+      "raw": {
+        "template": "edgeXEvent",
+        "namespaces": [ "edgex", "ASNSKU" ],
+        "initialData": {
+          "dataType": "SKUs"
+        }
+      },
+      "links": {
+        "siteID": { "from": "pipelineConfig", "elem": "siteID" }
+      }
+    },
+    "sendEdgeXEvent": {
+      "type": "http",
+      "ifSuccessful": [ "publishToIMA" ],
+      "raw": {
+        "method": "POST"
+      },
+      "links": {
+        "body": { "from": "edgeXEvent" },
+        "url": { "from": "coreDataURL" }
+      }
+    },
     "updateLastCompleted": {
       "type": "put",
       "raw": {
@@ -140,7 +166,7 @@
       },
       "links": {
         "value": {
-          "from": "publishToIMA",
+          "from": "sendEdgeXEvent",
           "using": "status",
           "elem": "CompletedAt"
         }

@@ -1,0 +1,22 @@
+[
+  { "exitError": 0, "becomingReadable": 0, "beingRead": 0, "dailyTurn": 0, "upc": "00000001184009", "sku": "1184009" },
+  { "exitError": 0, "becomingReadable": 0, "beingRead": 0, "dailyTurn": 0, "upc": "00000000373000", "sku": "373000" },
+  { "exitError": 0, "becomingReadable": 0, "beingRead": 0, "dailyTurn": 0, "upc": "00000000009000", "sku": "9000" },
+  { "exitError": 0, "becomingReadable": 0, "beingRead": 0, "dailyTurn": 0, "upc": "00000013958004", "sku": "13958004" },
+  { "exitError": 0, "becomingReadable": 0, "beingRead": 0, "dailyTurn": 0, "upc": "00000000269105", "sku": "269105" },
+  { "exitError": 0, "becomingReadable": 0, "beingRead": 0, "dailyTurn": 0, "upc": "00000013582027", "sku": "13582027" },
+  { "exitError": 0, "becomingReadable": 0, "beingRead": 0, "dailyTurn": 0, "upc": "00000013839001", "sku": "13839001" },
+  {
+    "exitError": 0.1, "becomingReadable": 0.2, "beingRead": 0.99, "dailyTurn": 0.2, "upc": "000145DB601637",
+    "sku": "000145DB601637"
+  },
+  { "exitError": 0, "becomingReadable": 0, "beingRead": 0, "dailyTurn": 0, "upc": "00000009114415", "sku": "9114415" },
+  {
+    "exitError": 0.1, "becomingReadable": 0.2, "beingRead": 0.75, "dailyTurn": 0.05, "upc": "000E05408582BD",
+    "sku": "000E05408582BD"
+  },
+  {
+    "exitError": 0.1, "becomingReadable": 0.2, "beingRead": 0.75, "dailyTurn": 0.05, "upc": "0006400ABC0221",
+    "sku": "0006400ABC0221"
+  }
+]
