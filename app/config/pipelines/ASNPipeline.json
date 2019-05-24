@@ -7,40 +7,58 @@
       "seconds": 120
     }
   },
-  "templateRefs": [ "cloudConn", "ASNSKU" ],
   "tasks": {
     "pipelineConfig": {
-      "type": "json",
+      "type": "secret",
       "raw": {
-        "oauthConfig": {
-          "useAuth": false,
-          "oauthEndpoint": "http://127.0.0.1:8812/authenticate",
-          "oauthCredentials": "username:password"
-        },
-        "cloudConnEndpoint": "http://192.168.99.100:9004/callwebhook",
-        "dataEndpoint": "http://192.168.99.100:9003/data",
-        "schemaFile": "schema-event-data-core.json"
-      }
+        "name": "asnPipelineConfig.json"
+      },
+      "errorIfEmpty": true
     },
-    "findCoreData": {
+    "coreDataConfig": {
       "type": "http",
+      "description": "Requests the Core Data port number from the service discovery service.",
       "raw": {
-        "method": "GET",
-        "url": "http://192.168.99.101:8500/v1/catalog/service/edgex-core-data"
+        "method": "GET"
+      },
+      "links": {
+        "url": { "from": "pipelineConfig", "elem": "coreDataLookup" }
       },
       "errorOnEmpty": true
     },
-    "extractCoreDataPort": {
+    "coreDataURL": {
       "type": "template",
+      "description": "Parses the output from the service discovery request to extract the port number.",
       "raw": {
-        "template": "extractCoreDataPort",
-        "namespaces": [ "edgex" ]
+        "template": "createEdgeXURL",
+        "namespaces": [ "edgex" ],
+        "initialData": {
+          "api": "/api/v1/event"
+        }
       },
       "links": {
-        "serviceConfigs": { "from": "findCoreData" }
+        "serviceConfigs": { "from": "coreDataConfig" }
       }
     },
-    "getLastUpdated": {
+    "mqttCredentials": {
+      "type": "secret",
+      "raw": {
+        "name": "mqttCredentials.txt"
+      },
+      "errorIfEmpty": true
+    },
+    "splitMQTTCreds": {
+      "type": "template",
+      "raw": {
+        "namespaces": [ "mqttcreds" ],
+        "template": "splitMQTTCreds"
+      },
+      "links": {
+        "fileData": { "from": "mqttCredentials" }
+      },
+      "disableResultLog": true
+    },
+    "lastUpdated": {
       "type": "get",
       "raw": {
         "source": "memoryStore",
@@ -48,70 +66,97 @@
         "default": 0
       }
     },
-    "createProxyRequest": {
+    "proxyRequest": {
       "type": "template",
+      "description": "Creates a request for the Cloud Connector to get the data",
       "raw": {
         "template": "proxyCCRequest",
         "namespaces": [ "cloudConn", "ASNSKU" ],
         "initialData": {
-          "method": "GET",
-          "siteID": "someSite1"
+          "method": "GET"
         }
       },
       "links": {
         "oAuthCreds": { "from": "pipelineConfig", "elem": "oauthConfig" },
-        "lastUpdated": { "from": "getLastUpdated" },
-        "baseURL": { "from": "pipelineConfig", "elem": "dataEndpoint" }
+        "lastUpdated": { "from": "lastUpdated" },
+        "baseURL": { "from": "pipelineConfig", "elem": "dataEndpoint" },
+        "siteID": { "from": "pipelineConfig", "elem": "siteID" }
       }
     },
-    "getData": {
+    "incomingData": {
       "type": "http",
       "raw": {
         "maxRetries": 3,
         "method": "POST"
       },
       "links": {
-        "body": { "from": "createProxyRequest" },
+        "body": { "from": "proxyRequest" },
         "url": { "from": "pipelineConfig", "elem": "cloudConnEndpoint" }
       }
     },
-    "extractCloudConnResponse": {
+    "cloudConnResponse": {
       "type": "template",
       "raw": {
-        "template": "EdgeXEvent",
-        "namespaces": [ "cloudConn", "edgex", "ASNSKU" ],
+        "template": "extractCCResponse",
+        "namespaces": [ "cloudConn", "ASNSKU" ]
+      },
+      "links": {
+        "ccResponse": { "from": "incomingData" }
+      },
+      "stopOnEmpty": true
+    },
+    "dataSchema": {
+      "type": "secret",
+      "links": {
+        "name": { "from": "pipelineConfig", "elem": "dataSchemaFile" }
+      },
+      "errorIfEmpty": true
+    },
+    "dataValidation": {
+      "type": "validation",
+      "links": {
+        "content": { "from": "cloudConnResponse" },
+        "schema": { "from": "dataSchema" }
+      }
+    },
+    "publishToIMA": {
+      "type": "mqtt",
+      "ifSuccessful": [ "dataValidation" ],
+      "links": {
+        "message": { "from": "cloudConnResponse" },
+        "username": { "from": "splitMQTTCreds", "elem": "username" },
+        "password": { "from": "splitMQTTCreds", "elem": "password" },
+        "endpoint": { "from": "pipelineConfig", "elem": "mqttEndpoint" },
+        "topics": { "from": "pipelineConfig", "elem": "mqttTopics" }
+      },
+      "raw": {
+        "encrypt": true,
+        "skipCertVerify": true,
+        "timeoutSecs": 100
+      }
+    },
+    "edgeXEvent": {
+      "type": "template",
+      "raw": {
+        "template": "edgeXEvent",
+        "namespaces": [ "edgex", "ASNSKU" ],
         "initialData": {
-          "siteID": "rrs-gateway",
           "dataType": "ASN"
         }
       },
       "links": {
-        "ccResponse": { "from": "getData" }
+        "siteID": { "from": "pipelineConfig", "elem": "siteID" }
       }
     },
-    "loadSchema": {
-      "type": "secret",
-      "links": {
-        "name": { "from": "pipelineConfig", "elem": "schemaFile" }
-      },
-      "errorIfEmpty": true
-    },
-    "validateData": {
-      "type": "validation",
-      "links": {
-        "content": { "from": "extractCloudConnResponse" },
-        "schema": { "from": "loadSchema" }
-      }
-    },
-    "publish": {
+    "sendEdgeXEvent": {
       "type": "http",
-      "ifSuccessful": [ "validateData" ],
+      "ifSuccessful": [ "publishToIMA" ],
       "raw": {
         "method": "POST"
       },
       "links": {
-        "body": { "from": "extractCloudConnResponse" },
-        "url": { "from": "extractCoreDataPort" }
+        "body": { "from": "edgeXEvent" },
+        "url": { "from": "coreDataURL" }
       }
     },
     "updateLastCompleted": {
@@ -121,7 +166,7 @@
       },
       "links": {
         "value": {
-          "from": "publish",
+          "from": "sendEdgeXEvent",
           "using": "status",
           "elem": "CompletedAt"
         }

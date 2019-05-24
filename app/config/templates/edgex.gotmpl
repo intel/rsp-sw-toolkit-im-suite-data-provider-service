@@ -1,14 +1,16 @@
-{{define "EdgeXEvent" -}}
+{{define "edgeXEvent" -}}
     {{- /* This template outputs a JSON-formatted EdgeX event. */ -}}
     {"origin": {{timestamp}},
-    "device": "{{block "EdgeXDevice" .}}{{or .device "unknown"}}{{end}}",
-    "readings": [ {{- block "EdgeXReadings" .}}{{or .readings ""}}{{end -}}
-    ]}
+    "device": {{block "edgeXDevice" .}}{{or .device "unknown"}}{{end}},
+    "readings": {{- block "edgeXReadings" .}}{{or .readings ""}}{{end -}}
+    }
 {{- end -}}
 
-{{define "extractCoreDataPort" -}}
-    "http://edgex-core-data:
+{{define "createEdgeXURL" -}}
+    {{- /* Constructs an EdgeX URL from consul service info. */ -}}
+    "
     {{- with index (json .serviceConfigs) 0 -}}
-        {{.ServicePort}}/api/v1/event
+        http://{{.ServiceAddress}}:{{.ServicePort}}{{$.api}}
     {{- end}}"
 {{- end -}}
+
