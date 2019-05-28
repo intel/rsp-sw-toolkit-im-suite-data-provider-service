@@ -3,8 +3,6 @@
   "coreDataLookup": "http://edgex-core-consul:8500/v1/catalog/service/edgex-core-data",
   "dataEndpoint": "http://192.168.99.100:9003/data",
   "cloudConnEndpoint": "http://cloud-connector:8080/callwebhook",
-  "mqttEndpoint": "mosquitto-server:9883",
-  "mqttTopics": [ "rfid/gw/shippingmasterdata" ],
   "dataSchemaFile": "ASNSchema.json",
   "oauthConfig": {
     "useAuth": false,

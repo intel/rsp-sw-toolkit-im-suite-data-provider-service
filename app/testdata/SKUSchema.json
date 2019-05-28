@@ -1,54 +1,40 @@
 {
-  "type": "object",
-  "required": [ "value" ],
-  "additionalProperties": false,
-  "properties": {
-    "value": {
-      "type": "object",
-      "required": [ "data" ],
-      "additionalProperties": false,
-      "properties": {
-        "data": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": [
-              "sku",
-              "upc"
-            ],
-            "properties": {
-              "sku": {
-                "type": "string"
-              },
-              "upc": {
-                "type": [ "string", "null" ]
-              },
-              "updatedOn": {
-                "type": "string"
-              },
-              "dailyTurn": {
-                "type": [ "number", "null" ],
-                "minimum": 0,
-                "maximum": 1
-              },
-              "becomingReadable": {
-                "type": [ "number", "null" ],
-                "minimum": 0,
-                "maximum": 1
-              },
-              "exitError": {
-                "type": [ "number", "null" ],
-                "minimum": 0,
-                "maximum": 1
-              },
-              "beingRead": {
-                "type": [ "number", "null" ],
-                "minimum": 0,
-                "maximum": 1
-              }
-            }
-          }
-        }
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "sku",
+      "upc"
+    ],
+    "properties": {
+      "sku": {
+        "type": "string"
+      },
+      "upc": {
+        "type": [ "string", "null" ]
+      },
+      "updatedOn": {
+        "type": "string"
+      },
+      "dailyTurn": {
+        "type": [ "number", "null" ],
+        "minimum": 0,
+        "maximum": 1
+      },
+      "becomingReadable": {
+        "type": [ "number", "null" ],
+        "minimum": 0,
+        "maximum": 1
+      },
+      "exitError": {
+        "type": [ "number", "null" ],
+        "minimum": 0,
+        "maximum": 1
+      },
+      "beingRead": {
+        "type": [ "number", "null" ],
+        "minimum": 0,
+        "maximum": 1
       }
     }
   }

@@ -166,7 +166,8 @@ func TestSKU(t *testing.T) {
 	w.ShouldBeTrue(ee.Origin > 0)
 	w.ShouldBeEqual(ee.Device, "rrs-gateway")
 	w.ShouldHaveLength(ee.Readings, 1)
-	w.ShouldBeEqual(ee.Readings[0], edgexReading{"new_SKU_data", "new ASN data available"})
+	w.ShouldBeEqual(ee.Readings[0].Name, "SKU_data")
+	w.ShouldNotBeEmptyStr(ee.Readings[0].Value)
 }
 
 func TestASN(t *testing.T) {
@@ -204,5 +205,6 @@ func TestASN(t *testing.T) {
 	w.ShouldBeTrue(ee.Origin > 0)
 	w.ShouldBeEqual(ee.Device, "rrs-gateway")
 	w.ShouldHaveLength(ee.Readings, 1)
-	w.ShouldBeEqual(ee.Readings[0], edgexReading{"new_ASN_data", "new ASN data available"})
+	w.ShouldBeEqual(ee.Readings[0].Name, "ASN_data")
+	w.ShouldNotBeEmptyStr(ee.Readings[0].Value)
 }

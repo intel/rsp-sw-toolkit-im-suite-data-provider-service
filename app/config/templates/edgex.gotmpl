@@ -11,6 +11,7 @@
     "
     {{- with index (json .serviceConfigs) 0 -}}
         http://{{.ServiceAddress}}:{{.ServicePort}}{{$.api}}
-    {{- end}}"
+    {{- end -}}
+    "
 {{- end -}}
 

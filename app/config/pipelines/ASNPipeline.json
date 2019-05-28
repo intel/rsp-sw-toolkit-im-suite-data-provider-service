@@ -1,6 +1,6 @@
 {
   "name": "ASN",
-  "description": "Downloads ASN data and publishes it on the shippingmasterdata topic.",
+  "description": "Downloads data from an HTTP endpoint and pushes it to EdgeX's Core Data.",
   "timeoutSeconds": 60,
   "trigger": {
     "interval": {
@@ -39,24 +39,6 @@
       "links": {
         "serviceConfigs": { "from": "coreDataConfig" }
       }
-    },
-    "mqttCredentials": {
-      "type": "secret",
-      "raw": {
-        "name": "mqttCredentials.txt"
-      },
-      "errorIfEmpty": true
-    },
-    "splitMQTTCreds": {
-      "type": "template",
-      "raw": {
-        "namespaces": [ "mqttcreds" ],
-        "template": "splitMQTTCreds"
-      },
-      "links": {
-        "fileData": { "from": "mqttCredentials" }
-      },
-      "disableResultLog": true
     },
     "lastUpdated": {
       "type": "get",
@@ -119,24 +101,9 @@
         "schema": { "from": "dataSchema" }
       }
     },
-    "publishToIMA": {
-      "type": "mqtt",
-      "ifSuccessful": [ "dataValidation" ],
-      "links": {
-        "message": { "from": "cloudConnResponse" },
-        "username": { "from": "splitMQTTCreds", "elem": "username" },
-        "password": { "from": "splitMQTTCreds", "elem": "password" },
-        "endpoint": { "from": "pipelineConfig", "elem": "mqttEndpoint" },
-        "topics": { "from": "pipelineConfig", "elem": "mqttTopics" }
-      },
-      "raw": {
-        "encrypt": true,
-        "skipCertVerify": true,
-        "timeoutSecs": 100
-      }
-    },
     "edgeXEvent": {
       "type": "template",
+      "ifSuccessful": [ "dataValidation" ],
       "raw": {
         "template": "edgeXEvent",
         "namespaces": [ "edgex", "ASNSKU" ],
@@ -145,12 +112,13 @@
         }
       },
       "links": {
+        "data": { "from": "cloudConnResponse" },
         "siteID": { "from": "pipelineConfig", "elem": "siteID" }
       }
     },
     "sendEdgeXEvent": {
       "type": "http",
-      "ifSuccessful": [ "publishToIMA" ],
+      "ifSuccessful": [ "dataValidation" ],
       "raw": {
         "method": "POST"
       },

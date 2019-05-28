@@ -1,66 +1,52 @@
 {
-  "type": "object",
-  "required": [ "value" ],
-  "additionalProperties": false,
-  "properties": {
-    "value": {
-      "type": "object",
-      "required": [ "data" ],
-      "additionalProperties": false,
-      "properties": {
-        "data": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": [
-              "asnId",
-              "eventTime",
-              "siteId",
-              "items"
-            ],
-            "properties": {
-              "asnId": {
-                "type": "string"
-              },
-              "eventTime": {
-                "type": "string"
-              },
-              "siteId": {
-                "type": "string"
-              },
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "asnId",
+      "eventTime",
+      "siteId",
+      "items"
+    ],
+    "properties": {
+      "asnId": {
+        "type": "string"
+      },
+      "eventTime": {
+        "type": "string"
+      },
+      "siteId": {
+        "type": "string"
+      },
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "itemId",
+            "itemGtin",
+            "itemEpcs"
+          ],
+          "properties": {
+            "sku": {
+              "type": "string"
+            },
+            "upc": {
+              "type": "string"
+            },
+            "epcs": {
+              "type": "array",
               "items": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "required": [
-                    "itemId",
-                    "itemGtin",
-                    "itemEpcs"
-                  ],
-                  "properties": {
-                    "sku": {
-                      "type": "string"
-                    },
-                    "upc": {
-                      "type": "string"
-                    },
-                    "epcs": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
-              },
-              "orderIds": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
+                "type": "string"
               }
             }
           }
+        }
+      },
+      "orderIds": {
+        "type": "array",
+        "items": {
+          "type": "string"
         }
       }
     }
