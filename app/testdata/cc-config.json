@@ -1,0 +1,17 @@
+{
+  "loggingLevel": "debug",
+  "telemetryEndpoint": "",
+  "telemetryDataStoreName": "CORE",
+  "responseLimit": 100,
+  "secureMode": true,
+  "skipCertVerify": true,
+  "port": "8080",
+  "cloud-connector-service": {
+    "serviceName": "RRP Cloud Connector Service",
+    "httpsProxyURL": ""
+  },
+  "configuration-service": {
+    "serviceName": "RRP Configuration Service",
+    "configCommand": "urn:config:command"
+  }
+}

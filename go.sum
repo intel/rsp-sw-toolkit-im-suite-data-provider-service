@@ -31,8 +31,8 @@ github.com/xeipuuv/gojsonschema v1.1.0 h1:ngVtJC9TY/lg0AA/1k48FYhBrhRoFlEmWzsehp
 github.com/xeipuuv/gojsonschema v1.1.0/go.mod h1:5yf86TLmAcydyeJq5YvxkGPE2fm/u4myDekKRoLuqhs=
 github.impcloud.net/RSP-Inventory-Suite/expect v1.0.1 h1:8lZWeT6BYkSdlZrtuWz+2Z2nD5nWBRugimSjnQSzFGU=
 github.impcloud.net/RSP-Inventory-Suite/expect v1.0.1/go.mod h1:E+a15BBtQmZpww1wVNivY+9ADMv6jIyVUGPEWX5JuNQ=
-github.impcloud.net/RSP-Inventory-Suite/goplumber v0.0.0-20190520195147-68515a0bf4b7 h1:QGH6kgtk2ztZ2ofxFaedpU2i/PKAOAmMj0HDQNfQASk=
-github.impcloud.net/RSP-Inventory-Suite/goplumber v0.0.0-20190520195147-68515a0bf4b7/go.mod h1:CbE3Z+Ck1enslWL3pr2cyNKxQxOEdCsXDXQSrL5oiuI=
+github.impcloud.net/RSP-Inventory-Suite/goplumber v1.0.1 h1:pwUtSKd3n92x1TIhlH1kyMgncLFeS3Up6SNG+jci2WU=
+github.impcloud.net/RSP-Inventory-Suite/goplumber v1.0.1/go.mod h1:CbE3Z+Ck1enslWL3pr2cyNKxQxOEdCsXDXQSrL5oiuI=
 github.impcloud.net/Responsive-Retail-Core/utilities v0.0.0-20190103181243-564719abdd07 h1:AJO2Ncl/aFdqie0pjs677UsTmwt0R3oHr1yXP9G1u9Y=
 github.impcloud.net/Responsive-Retail-Core/utilities v0.0.0-20190103181243-564719abdd07/go.mod h1:dYH6w4NKBPOmWDRgv/pIIu1ZwinQSyu+9N/EgDHKofM=
 github.impcloud.net/Responsive-Retail-Inventory/expect v0.0.0-20190424185804-de058c90dac9 h1:XUIijtDybbzMXPiCTwRESEfONBuMsKs4J3flkvsmwG8=

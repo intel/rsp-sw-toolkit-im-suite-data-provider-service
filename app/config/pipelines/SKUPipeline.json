@@ -108,7 +108,8 @@
         "template": "edgeXEvent",
         "namespaces": [ "edgex", "ASNSKU" ],
         "initialData": {
-          "dataType": "SKU"
+          "dataType": "SKU",
+          "device": "SKU_Data_Device"
         }
       },
       "links": {

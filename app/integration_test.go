@@ -4,8 +4,8 @@ package app
 
 import (
 	"github.com/sirupsen/logrus"
+	"github.impcloud.net/RSP-Inventory-Suite/expect"
 	"github.impcloud.net/RSP-Inventory-Suite/goplumber"
-	"github.impcloud.net/Responsive-Retail-Inventory/expect"
 	"testing"
 )
 

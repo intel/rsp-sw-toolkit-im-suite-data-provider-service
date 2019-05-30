@@ -10,7 +10,7 @@ require (
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.4.1
-	github.impcloud.net/RSP-Inventory-Suite/goplumber v0.0.0-20190520195147-68515a0bf4b7
+	github.impcloud.net/RSP-Inventory-Suite/expect v1.0.1
+	github.impcloud.net/RSP-Inventory-Suite/goplumber v1.0.1
 	github.impcloud.net/Responsive-Retail-Core/utilities v0.0.0-20190103181243-564719abdd07
-	github.impcloud.net/Responsive-Retail-Inventory/expect v0.0.0-20190424185804-de058c90dac9
 )

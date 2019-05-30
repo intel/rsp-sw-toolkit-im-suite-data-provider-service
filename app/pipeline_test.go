@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"github.impcloud.net/RSP-Inventory-Suite/expect"
 	"github.impcloud.net/RSP-Inventory-Suite/goplumber"
-	"github.impcloud.net/Responsive-Retail-Inventory/expect"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -164,7 +164,7 @@ func TestSKU(t *testing.T) {
 	w.Logf("%s", results["/api/v1/event"])
 	w.ShouldSucceed(json.Unmarshal(results["/api/v1/event"], &ee))
 	w.ShouldBeTrue(ee.Origin > 0)
-	w.ShouldBeEqual(ee.Device, "rrs-gateway")
+	w.ShouldBeEqual(ee.Device, "SKU_Data_Device")
 	w.ShouldHaveLength(ee.Readings, 1)
 	w.ShouldBeEqual(ee.Readings[0].Name, "SKU_data")
 	w.ShouldNotBeEmptyStr(ee.Readings[0].Value)
@@ -203,7 +203,7 @@ func TestASN(t *testing.T) {
 	w.Logf("%s", results["/api/v1/event"])
 	w.ShouldSucceed(json.Unmarshal(results["/api/v1/event"], &ee))
 	w.ShouldBeTrue(ee.Origin > 0)
-	w.ShouldBeEqual(ee.Device, "rrs-gateway")
+	w.ShouldBeEqual(ee.Device, "ASN_Data_Device")
 	w.ShouldHaveLength(ee.Readings, 1)
 	w.ShouldBeEqual(ee.Readings[0].Name, "ASN_data")
 	w.ShouldNotBeEmptyStr(ee.Readings[0].Value)

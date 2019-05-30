@@ -1,0 +1,153 @@
+version: '3'
+volumes:
+  db-data:
+  log-data:
+  consul-config:
+  consul-data:
+  portainer_data:
+
+services:
+  volume:
+    image: edgexfoundry/docker-edgex-volume:0.6.0
+    container_name: edgex-files
+    networks:
+      - edgex-network
+    volumes:
+      - db-data:/data/db
+      - log-data:/edgex/logs
+      - consul-config:/consul/config
+      - consul-data:/consul/data
+
+  consul:
+    image: consul:1.1.0
+    ports:
+      - "8400:8400"
+      - "8500:8500"
+      - "8600:8600"
+    container_name: edgex-core-consul
+    hostname: edgex-core-consul
+    networks:
+      edgex-network:
+        aliases:
+          - edgex-core-consul
+    volumes:
+      - db-data:/data/db
+      - log-data:/edgex/logs
+      - consul-config:/consul/config
+      - consul-data:/consul/data
+    depends_on:
+      - volume
+
+  config-seed:
+    image: edgexfoundry/docker-core-config-seed-go:0.7.1
+    container_name: edgex-config-seed
+    hostname: edgex-core-config-seed
+    networks:
+      edgex-network:
+        aliases:
+          - edgex-core-config-seed
+    volumes:
+      - db-data:/data/db
+      - log-data:/edgex/logs
+      - consul-config:/consul/config
+      - consul-data:/consul/data
+    depends_on:
+      - volume
+      - consul
+
+  mongo:
+    image: edgexfoundry/docker-edgex-mongo:0.6.0
+    ports:
+      - "27017:27017"
+    container_name: edgex-mongo
+    hostname: edgex-mongo
+    networks:
+      - edgex-network
+    volumes:
+      - db-data:/data/db
+      - log-data:/edgex/logs
+      - consul-config:/consul/config
+      - consul-data:/consul/data
+    depends_on:
+      - volume
+
+  logging:
+    image: edgexfoundry/docker-support-logging-go:0.7.1
+    ports:
+      - "48061:48061"
+    container_name: edgex-support-logging
+    hostname: edgex-support-logging
+    networks:
+      - edgex-network
+    volumes:
+      - db-data:/data/db
+      - log-data:/edgex/logs
+      - consul-config:/consul/config
+      - consul-data:/consul/data
+    depends_on:
+      - config-seed
+      - mongo
+      - volume
+
+  metadata:
+    image: edgexfoundry/docker-core-metadata-go:0.7.1
+    ports:
+      - "48081:48081"
+    container_name: edgex-core-metadata
+    hostname: edgex-core-metadata
+    networks:
+      - edgex-network
+    volumes:
+      - db-data:/data/db
+      - log-data:/edgex/logs
+      - consul-config:/consul/config
+      - consul-data:/consul/data
+    depends_on:
+      - logging
+
+  data:
+    image: edgexfoundry/docker-core-data-go:0.7.1
+    ports:
+      - "48080:48080"
+      - "5563:5563"
+    container_name: edgex-core-data
+    hostname: edgex-core-data
+    networks:
+      - edgex-network
+    volumes:
+      - db-data:/data/db
+      - log-data:/edgex/logs
+      - consul-config:/consul/config
+      - consul-data:/consul/data
+    depends_on:
+      - logging
+
+  command:
+    image: edgexfoundry/docker-core-command-go:0.7.1
+    ports:
+      - "48082:48082"
+    container_name: edgex-core-command
+    hostname: edgex-core-command
+    networks:
+      - edgex-network
+    volumes:
+      - db-data:/data/db
+      - log-data:/edgex/logs
+      - consul-config:/consul/config
+      - consul-data:/consul/data
+    depends_on:
+      - metadata
+
+  portainer:
+    image:  portainer/portainer
+    ports:
+      - "9000:9000"
+    command: -H unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+
+networks:
+  edgex-network:
+    external:
+      name: "edgex-network"

@@ -20,7 +20,7 @@
 package config
 
 import (
-	"github.impcloud.net/Responsive-Retail-Inventory/expect"
+	"github.impcloud.net/RSP-Inventory-Suite/expect"
 	"testing"
 )
 
