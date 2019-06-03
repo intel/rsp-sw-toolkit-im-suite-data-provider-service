@@ -13,13 +13,13 @@ and a few helper functions:
     - loads pipeline definitions
     - configures template and secret locations 
 - config:
-    - [service config](#Service Configuration)
+    - [service config](#Service-Configuration)
     - ASN/SKU pipeline definitions 
     ([defaults](app/config/pipelines) are included in Docker image)
     - ASN/SKU, EdgeX, and Cloud Connector templates 
     ([defaults](app/config/templates) are included in Docker image)
     - endpoint config and data schemas 
-    ([must be provided](#Endpoint Configuration); 
+    ([must be provided](#Endpoint-Configuration); 
     examples in [testdata](app/testdata) directory)
     
 ## Integration Testing
