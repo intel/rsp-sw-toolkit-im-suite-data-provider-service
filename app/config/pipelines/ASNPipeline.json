@@ -13,7 +13,8 @@
       "raw": {
         "name": "asnPipelineConfig.json"
       },
-      "errorIfEmpty": true
+      "errorIfEmpty": true,
+      "disableResultLog": true
     },
     "coreDataConfig": {
       "type": "http",
@@ -24,7 +25,7 @@
       "links": {
         "url": { "from": "pipelineConfig", "elem": "coreDataLookup" }
       },
-      "errorOnEmpty": true
+      "errorIfEmpty": true
     },
     "coreDataURL": {
       "type": "template",
@@ -43,7 +44,6 @@
     "lastUpdated": {
       "type": "get",
       "raw": {
-        "source": "memoryStore",
         "name": "asn.lastUpdated",
         "default": 0
       }

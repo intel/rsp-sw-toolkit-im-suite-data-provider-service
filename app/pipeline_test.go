@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.impcloud.net/RSP-Inventory-Suite/expect"
 	"github.impcloud.net/RSP-Inventory-Suite/goplumber"
@@ -21,70 +22,48 @@ func init() {
 	logrus.SetLevel(logrus.DebugLevel)
 }
 
-var testPipeLoader = goplumber.NewFSLoader("config/pipelines")
-var testTmplLoader = goplumber.NewFSLoader("config/templates")
-var testDataLoader = goplumber.NewFSLoader("testdata")
-var testMemStore = goplumber.NewMemoryStore()
-
-type overrideStore struct {
-	goplumber.PipelineStore
-	overrides map[string][]byte
-}
-
-func (os overrideStore) Get(ctx context.Context, key string) ([]byte, bool, error) {
-	r, ok := os.overrides[key]
-	if ok {
-		logrus.Debugf("using override for %s", key)
-		return r, true, nil
-	}
-	return os.PipelineStore.Get(ctx, key)
-}
-
-var testSecretStore = overrideStore{
-	PipelineStore: goplumber.NewDockerSecretsStore("testdata"),
-	overrides:     map[string][]byte{},
-}
-
 func getTestData(w *expect.TWrapper, filename string) []byte {
 	w.Helper()
-	return w.ShouldHaveResult(testDataLoader.GetFile(filename)).([]byte)
+	return w.ShouldHaveResult(dataLoader.GetFile(filename)).([]byte)
 }
 
-func getTestPipeline(w *expect.TWrapper, name, addr string) goplumber.Pipeline {
-	w.Helper()
-	conf := w.ShouldHaveResult(testPipeLoader.GetFile(name)).([]byte)
-	pcon := goplumber.PipelineConnector{
-		TemplateLoader: testTmplLoader,
-		KVData:         testMemStore,
-		Secrets:        testSecretStore,
+var pipeLoader = goplumber.NewFSLoader("config/pipelines")
+var tmplLoader = goplumber.NewFSLoader("config/templates")
+var dataLoader = goplumber.NewFSLoader("testdata")
+var memoryStore = goplumber.NewMemoryStore()
+
+type multiSearchSource struct {
+	sources []goplumber.DataSource
+}
+
+func (mss *multiSearchSource) Get(ctx context.Context, key string) ([]byte, bool, error) {
+	for i, s := range mss.sources {
+		if val, ok, err := s.Get(ctx, key); ok && err == nil {
+			return val, true, nil
+		} else if err != nil {
+			logrus.WithError(err).
+				Errorf("failed to get value for key '%s' from source %d",
+					key, i)
+		}
 	}
-	testSecretStore.overrides["asnPipelineConfig.json"] =
-		[]byte(fmt.Sprintf(`
-{
-  "siteID": "rrs-gateway",
-  "dataEndpoint": "http://example.com/data",
-  "cloudConnEndpoint": "%[1]s/cloudconn",
-  "coreDataLookup": "%[1]s/core-data",
-  "mqttEndpoint": "mosquitto-server:9883",
-  "mqttTopics": [ "rfid/gw/shippingmasterdata" ],
-  "dataSchemaFile": "ASNSchema.json",
-  "oauthConfig": { "useAuth": false }
+	return nil, false, errors.Errorf("key '%s' not found in any source", key)
 }
-`, addr))
-	testSecretStore.overrides["skuPipelineConfig.json"] =
-		[]byte(fmt.Sprintf(`
-{
-  "siteID": "rrs-gateway",
-  "dataEndpoint": "http://example.com/data",
-  "cloudConnEndpoint": "%[1]s/cloudconn",
-  "coreDataLookup": "%[1]s/core-data",
-  "mqttEndpoint": "mosquitto-server:9883",
-  "mqttTopics": [ "rfid/gw/productmasterdata" ],
-  "dataSchemaFile": "SKUSchema.json",
-  "oauthConfig": { "useAuth": false }
+
+func getTestPlumber() goplumber.Plumber {
+	p := goplumber.NewPlumber(tmplLoader)
+	mss := &multiSearchSource{sources: []goplumber.DataSource{memoryStore, dataLoader}}
+	p.TaskGenerators["secret"] = goplumber.NewLoadTaskGenerator(mss)
+	p.TaskGenerators["get"] = goplumber.NewLoadTaskGenerator(memoryStore)
+	p.TaskGenerators["put"] = goplumber.NewStoreTaskGenerator(memoryStore)
+
+	return p
 }
-`, addr))
-	return w.ShouldHaveResult(goplumber.NewPipeline(conf, pcon)).(goplumber.Pipeline)
+
+func getTestPipeline(w *expect.TWrapper, plumber goplumber.Plumber, name string) goplumber.Pipeline {
+	w.Helper()
+	conf := w.ShouldHaveResult(pipeLoader.GetFile(name)).([]byte)
+	pipeline := w.ShouldHaveResult(plumber.NewPipeline(conf)).(goplumber.Pipeline)
+	return pipeline
 }
 
 func withDataServer(w *expect.TWrapper, dataMap map[string][]byte, f func(url string)) map[string][]byte {
@@ -115,7 +94,7 @@ func testPipeline(w *expect.TWrapper, p *goplumber.Pipeline, memname string) {
 	defer cancel()
 	w.ShouldSucceed(p.Execute(ctx))
 
-	r, ok, err := testMemStore.Get(ctx, memname)
+	r, ok, err := memoryStore.Get(ctx, memname)
 	w.ShouldHaveResult(r, err)
 	w.ShouldBeTrue(ok)
 	rn := w.ShouldHaveResult(strconv.Atoi(string(r))).(int)
@@ -123,7 +102,7 @@ func testPipeline(w *expect.TWrapper, p *goplumber.Pipeline, memname string) {
 
 	// run a second time
 	w.ShouldSucceed(p.Execute(context.Background()))
-	r2, ok, err := testMemStore.Get(ctx, memname)
+	r2, ok, err := memoryStore.Get(ctx, memname)
 	w.ShouldHaveResult(r2, err)
 	w.ShouldBeTrue(ok)
 	rn2 := w.ShouldHaveResult(strconv.Atoi(string(r2))).(int)
@@ -135,6 +114,8 @@ func TestSKU(t *testing.T) {
 	w := expect.WrapT(t).StopOnMismatch()
 	skuData := base64.StdEncoding.EncodeToString(getTestData(w, "skuData.json"))
 
+	plumber := getTestPlumber()
+
 	dataMap := map[string][]byte{
 		"/cloudconn":    []byte(fmt.Sprintf(`{"statuscode":200,"body":"%s"}`, skuData)),
 		"/api/v1/event": []byte(``), // POSTed to
@@ -145,7 +126,19 @@ func TestSKU(t *testing.T) {
 		dataMap["/core-data"] = []byte(fmt.Sprintf(
 			`[{"ServicePort":"%s","ServiceAddress":"%s",%s}]`,
 			serverURL.Port(), serverURL.Hostname(), coreData))
-		p := getTestPipeline(w, "SKUPipeline.json", addr)
+
+		_ = memoryStore.Put(context.Background(), "skuPipelineConfig.json",
+			[]byte(fmt.Sprintf(`{
+			  "siteID": "rrs-gateway",
+			  "dataEndpoint": "http://example.com/data",
+			  "cloudConnEndpoint": "%[1]s/cloudconn",
+			  "coreDataLookup": "%[1]s/core-data",
+			  "mqttEndpoint": "mosquitto-server:9883",
+			  "dataSchemaFile": "SKUSchema.json",
+			  "oauthConfig": { "useAuth": false }
+			}`, addr)))
+
+		p := getTestPipeline(w, plumber, "SKUPipeline.json")
 		testPipeline(w, &p, "skus.lastUpdated")
 	})
 
@@ -174,6 +167,8 @@ func TestASN(t *testing.T) {
 	w := expect.WrapT(t).StopOnMismatch()
 	asnData := base64.StdEncoding.EncodeToString(getTestData(w, "asnData.json"))
 
+	plumber := getTestPlumber()
+
 	dataMap := map[string][]byte{
 		"/cloudconn":    []byte(fmt.Sprintf(`{"statuscode":200,"body":"%s"}`, asnData)),
 		"/api/v1/event": []byte(``), // POSTed to
@@ -184,7 +179,19 @@ func TestASN(t *testing.T) {
 		dataMap["/core-data"] = []byte(fmt.Sprintf(
 			`[{"ServicePort":"%s","ServiceAddress":"%s",%s}]`,
 			serverURL.Port(), serverURL.Hostname(), coreData))
-		p := getTestPipeline(w, "ASNPipeline.json", addr)
+
+		_ = memoryStore.Put(context.Background(), "asnPipelineConfig.json",
+			[]byte(fmt.Sprintf(`{
+				  "siteID": "rrs-gateway",
+				  "dataEndpoint": "http://example.com/data",
+				  "cloudConnEndpoint": "%[1]s/cloudconn",
+				  "coreDataLookup": "%[1]s/core-data",
+				  "mqttEndpoint": "mosquitto-server:9883",
+				  "dataSchemaFile": "ASNSchema.json",
+				  "oauthConfig": { "useAuth": false }
+				}`, addr)))
+
+		p := getTestPipeline(w, plumber, "ASNPipeline.json")
 		testPipeline(w, &p, "asn.lastUpdated")
 	})
 

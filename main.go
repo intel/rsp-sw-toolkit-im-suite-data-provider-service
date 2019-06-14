@@ -71,23 +71,36 @@ func main() {
 func loadPipelines(ctx context.Context) error {
 	log.Debug("Starting pipeline runner.")
 	runner := goplumber.NewPipelineRunner()
-	connections := goplumber.PipelineConnector{
-		TemplateLoader: goplumber.NewFSLoader(config.AppConfig.TemplatesDir),
-		KVData:         goplumber.NewMemoryStore(),
-		Secrets:        goplumber.NewDockerSecretsStore(config.AppConfig.SecretsPath),
-	}
 
+	// load templates from the filesystem
+	templateLoader := goplumber.NewFSLoader(config.AppConfig.TemplatesDir)
+	plumber := goplumber.NewPlumber(templateLoader)
+
+	// add a task for getting Docker secrets
+	plumber.TaskGenerators["secret"] = goplumber.NewLoadTaskGenerator(
+		goplumber.NewFSLoader(config.AppConfig.SecretsPath))
+
+	// just use memory for K/V data; later, use consul
+	kvData := goplumber.NewMemoryStore()
+	plumber.TaskGenerators["get"] = goplumber.NewLoadTaskGenerator(kvData)
+	plumber.TaskGenerators["put"] = goplumber.NewStoreTaskGenerator(kvData)
+
+	// load pipelines from the filesystem
 	pipedata := goplumber.NewFSLoader(config.AppConfig.PipelinesDir)
-	log.Debug("Loading pipelines")
+
+	// only load the configured names
+	log.Debug("Loading pipelines.")
 	for _, name := range config.AppConfig.PipelineNames {
 		data, err := pipedata.GetFile(name)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load pipeline %s", name)
 		}
-		p, err := goplumber.NewPipeline(data, connections)
+
+		p, err := plumber.NewPipeline(data)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load pipeline %s", name)
 		}
+
 		runner.AddPipeline(ctx, p)
 	}
 	return nil
