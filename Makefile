@@ -15,12 +15,28 @@ up: net server edgex cloud-connector data-provider
 net:
 	-docker network create edgex-network
 
+mqtt:
+	-docker rm -f $@
+	docker run -d --name $@ \
+		--net edgex-network \
+		--network-alias mosquitto-server \
+		--env HTTP_PROXY="" \
+		--env http_proxy="" \
+		--env HTTPS_PROXY="" \
+		--env https_proxy="" \
+		--env NO_PROXY="*" \
+		--env no_proxy="*" \
+		-v $$(PWD)/app/testdata/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro \
+		eclipse-mosquitto
+
+
 server:
 	-docker stop $@
 	docker run -d --rm --name $@ \
 		--net edgex-network \
 		--network-alias asn_data \
 		--network-alias sku_data \
+		--network-alias clusterConfig \
 		-v $$(PWD)/app/testdata:/files \
 		-v $$(PWD)/app/testdata/nginx.conf:/etc/nginx/nginx.conf:ro \
 		nginx
@@ -28,14 +44,15 @@ server:
 edgex:
 	docker-compose -f edgex-compose.yml up -d
 
+
 data-provider:
 	-docker stop $@
 	docker run -it --rm --name $@ \
 		-v $$(PWD)/app/testdata:/run/secrets \
 		-v $$(PWD)/app/config:/app/config \
 		--net edgex-network \
-		--env no_proxy="cloud-connector,edgex-core-consul,edgex-core-data" \
-		--env NO_PROXY="cloud-connector,edgex-core-consul,edgex-core-data" \
+		--env no_proxy="mosquitto-server,cloud-connector,edgex-core-consul,edgex-core-data" \
+		--env NO_PROXY="mosquitto-server,cloud-connector,edgex-core-consul,edgex-core-data" \
 		--env runtimeConfigPath="/app/config/configuration.json" \
 		$(REPO):$(TAG)
 
@@ -45,8 +62,8 @@ cloud-connector:
 		-v $$(PWD)/app/testdata:/files \
 		-u 2000:2000 \
 		--net edgex-network \
-		--env no_proxy="asn_data,sku_data" \
-		--env NO_PROXY="asn_data,sku_data" \
+		--env no_proxy="asn_data,sku_data,clusterConfig" \
+		--env NO_PROXY="asn_data,sku_data,clusterConfig" \
 		--env runtimeConfigPath="/files/cc-config.json" \
 		280211473891.dkr.ecr.us-west-2.amazonaws.com/cloud-connector-service@sha256:8f7356f7ed9c3b9edde01b618fdf4266983ff42e89d9a5d30b90ff575f70610b
 

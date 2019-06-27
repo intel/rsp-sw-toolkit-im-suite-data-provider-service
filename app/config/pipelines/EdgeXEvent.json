@@ -1,0 +1,62 @@
+{
+  "name": "edgeXEvent",
+  "description": "Puts data into a format suitable for EdgeX and sends it to Core Data",
+  "timeoutSeconds": 30,
+  "defaultOutput": "send",
+  "tasks": {
+    "deviceName": { "type": "input" },
+    "dataType": { "type": "input" },
+    "readings": { "type": "input", "raw": { "default": [ ] } },
+    "coreDataConsulAddress": {
+      "type": "input",
+      "raw": { "default": "http://edgex-core-consul:8500/v1/catalog/service/edgex-core-data" }
+    },
+    "lookupService": {
+      "type": "http",
+      "description": "Requests the Core Data port number from the service discovery service.",
+      "raw": {
+        "method": "GET"
+      },
+      "links": {
+        "url": { "from": "coreDataConsulAddress" }
+      },
+      "errorIfEmpty": true
+    },
+    "coreDataURL": {
+      "type": "template",
+      "description": "Parses the output from the service discovery request to extract the port number.",
+      "raw": {
+        "template": "createEdgeXURL",
+        "namespaces": [ "edgex" ],
+        "initialData": {
+          "api": "/api/v1/event"
+        }
+      },
+      "links": {
+        "serviceConfigs": { "from": "lookupService" }
+      }
+    },
+    "edgeXEvent": {
+      "type": "template",
+      "raw": {
+        "template": "edgeXEvent",
+        "namespaces": [ "edgex" ]
+      },
+      "links": {
+        "dataType": { "from": "dataType" },
+        "data": { "from": "readings" },
+        "device": { "from": "deviceName" }
+      }
+    },
+    "send": {
+      "type": "http",
+      "raw": {
+        "method": "POST"
+      },
+      "links": {
+        "body": { "from": "edgeXEvent" },
+        "url": { "from": "coreDataURL" }
+      }
+    }
+  }
+}

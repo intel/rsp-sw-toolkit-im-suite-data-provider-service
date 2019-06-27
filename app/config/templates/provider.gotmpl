@@ -1,10 +1,7 @@
-{{define "ccDest"}}
+{{define "siteQuery"}}
     {{- json .baseURL -}}
     ?siteId={{block "getSiteID" .}}{{.siteID | json | urlquery -}}{{end -}}
     &updateAfter={{int .lastUpdated | formatTime `2006-01-02T15:04:05.000Z` | urlquery -}}
 {{- end -}}
 
-{{define "edgeXReadings" -}}
-    [{"name": "{{.dataType|str}}_data", "value": "{{.data | enc64}}"}]
-{{- end -}}
 

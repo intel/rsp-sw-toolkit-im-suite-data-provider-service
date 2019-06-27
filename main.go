@@ -21,12 +21,16 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 	"github.impcloud.net/RSP-Inventory-Suite/goplumber"
 	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/app/routes"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"time"
 
@@ -68,40 +72,107 @@ func main() {
 	log.WithField("Method", "main").Info("Completed.")
 }
 
-func loadPipelines(ctx context.Context) error {
-	log.Debug("Starting pipeline runner.")
-	runner := goplumber.NewPipelineRunner()
+type uuidGen struct{}
 
-	// load templates from the filesystem
-	templateLoader := goplumber.NewFSLoader(config.AppConfig.TemplatesDir)
-	plumber := goplumber.NewPlumber(templateLoader)
+func (uuidGen) Execute(ctx context.Context, w io.Writer, links map[string][]byte) error {
+	_, err := w.Write([]byte(uuid.New()))
+	return err
+}
+
+func loadPipelines(ctx context.Context) error {
+	log.Debug("Starting pipelines.")
+	plumber := goplumber.NewPlumber()
+
+	// load pipelines and templates from the filesystem
+	loader := goplumber.NewFSLoader(config.AppConfig.TemplatesDir)
+	plumber.SetTemplateSource("template", loader)
 
 	// add a task for getting Docker secrets
-	plumber.TaskGenerators["secret"] = goplumber.NewLoadTaskGenerator(
+	plumber.SetSource("secret",
 		goplumber.NewFSLoader(config.AppConfig.SecretsPath))
 
-	// just use memory for K/V data; later, use consul
+	// just use memory for K/V data; later, use consul or a db
 	kvData := goplumber.NewMemoryStore()
-	plumber.TaskGenerators["get"] = goplumber.NewLoadTaskGenerator(kvData)
-	plumber.TaskGenerators["put"] = goplumber.NewStoreTaskGenerator(kvData)
+	plumber.SetSource("get", kvData)
+	plumber.SetSink("put", kvData)
 
-	// load pipelines from the filesystem
+	// add uuid generator
+	plumber.SetClient("uuid", goplumber.PipeFunc(
+		func(task *goplumber.Task) (goplumber.Pipe, error) { return uuidGen{}, nil }))
+
+	log.Debug("Loading MQTT clients (if any).")
 	pipedata := goplumber.NewFSLoader(config.AppConfig.PipelinesDir)
+	for _, fn := range config.AppConfig.MQTTClients {
+		name := fn
+		if !strings.HasSuffix(fn, ".json") {
+			fn += ".json"
+		}
+		mqttConfData, err := pipedata.GetFile(fn)
+		if err != nil {
+			return errors.Errorf("unable to load mqtt config %s", fn)
+		}
+		mc := &goplumber.MQTTClient{}
+		if err := json.Unmarshal(mqttConfData, mc); err != nil {
+			return errors.Wrapf(err, "unable to unmarshal mqtt config for %s", fn)
+		}
+		plumber.SetSink(name, mc)
+	}
+
+	log.Debug("Loading custom task types from pipelines.")
+	for _, name := range config.AppConfig.CustomTaskTypes {
+		data, err := pipedata.GetFile(name)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load pipeline from file %s", name)
+		}
+
+		var pipelineConf goplumber.PipelineConfig
+		if err := json.Unmarshal(data, &pipelineConf); err != nil {
+			return errors.Wrapf(err, "failed to unmarshal pipeline config from %s", name)
+		}
+
+		taskType, err := plumber.NewPipeline(&pipelineConf)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load pipeline %s", name)
+		}
+		client, err := goplumber.NewTaskType(taskType)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create client for %s", name)
+		}
+		plumber.SetClient(pipelineConf.Name, client)
+	}
 
 	// only load the configured names
 	log.Debug("Loading pipelines.")
+	plines := map[*goplumber.Pipeline]time.Duration{}
 	for _, name := range config.AppConfig.PipelineNames {
 		data, err := pipedata.GetFile(name)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load pipeline %s", name)
 		}
 
-		p, err := plumber.NewPipeline(data)
+		var pipelineConf goplumber.PipelineConfig
+		if err := json.Unmarshal(data, &pipelineConf); err != nil {
+			return errors.Wrapf(err, "failed to unmarshal pipeline config from %s", name)
+		}
+
+		p, err := plumber.NewPipeline(&pipelineConf)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load pipeline %s", name)
 		}
 
-		runner.AddPipeline(ctx, p)
+		d := pipelineConf.Trigger.Interval.Duration()
+		if d <= 0 {
+			old := d
+			d = time.Duration(2) * time.Minute
+			log.Warningf("setting pipeline '%s' interval from %s to %s",
+				pipelineConf.Name, old, d)
+		}
+		plines[p] = d
+	}
+
+	log.Debugf("Starting %d pipelines.", len(plines))
+	for p, d := range plines {
+		go goplumber.RunPipelineForever(ctx, p, d)
 	}
 	return nil
 }

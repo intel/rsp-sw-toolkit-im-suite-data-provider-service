@@ -1,143 +1,23 @@
 {
   "name": "ASN",
-  "description": "Downloads data from an HTTP endpoint and pushes it to EdgeX's Core Data.",
+  "description": "Download, validate, and store ASN Data.",
   "timeoutSeconds": 60,
   "trigger": {
     "interval": {
-      "seconds": 120
+      "minutes": 2
     }
   },
   "tasks": {
-    "pipelineConfig": {
-      "type": "secret",
+    "doEdgeX": {
+      "type": "provideEdgeX",
       "raw": {
-        "name": "asnPipelineConfig.json"
-      },
-      "errorIfEmpty": true,
-      "disableResultLog": true
-    },
-    "coreDataConfig": {
-      "type": "http",
-      "description": "Requests the Core Data port number from the service discovery service.",
-      "raw": {
-        "method": "GET"
-      },
-      "links": {
-        "url": { "from": "pipelineConfig", "elem": "coreDataLookup" }
-      },
-      "errorIfEmpty": true
-    },
-    "coreDataURL": {
-      "type": "template",
-      "description": "Parses the output from the service discovery request to extract the port number.",
-      "raw": {
-        "template": "createEdgeXURL",
-        "namespaces": [ "edgex" ],
-        "initialData": {
-          "api": "/api/v1/event"
-        }
-      },
-      "links": {
-        "serviceConfigs": { "from": "coreDataConfig" }
-      }
-    },
-    "lastUpdated": {
-      "type": "get",
-      "raw": {
-        "name": "asn.lastUpdated",
-        "default": 0
-      }
-    },
-    "proxyRequest": {
-      "type": "template",
-      "description": "Creates a request for the Cloud Connector to get the data",
-      "raw": {
-        "template": "proxyCCRequest",
-        "namespaces": [ "cloudConn", "ASNSKU" ],
-        "initialData": {
-          "method": "GET"
-        }
-      },
-      "links": {
-        "oAuthCreds": { "from": "pipelineConfig", "elem": "oauthConfig" },
-        "lastUpdated": { "from": "lastUpdated" },
-        "baseURL": { "from": "pipelineConfig", "elem": "dataEndpoint" },
-        "siteID": { "from": "pipelineConfig", "elem": "siteID" }
-      }
-    },
-    "incomingData": {
-      "type": "http",
-      "raw": {
-        "maxRetries": 3,
-        "method": "POST"
-      },
-      "links": {
-        "body": { "from": "proxyRequest" },
-        "url": { "from": "pipelineConfig", "elem": "cloudConnEndpoint" }
-      }
-    },
-    "cloudConnResponse": {
-      "type": "template",
-      "raw": {
-        "template": "extractCCResponse",
-        "namespaces": [ "cloudConn", "ASNSKU" ]
-      },
-      "links": {
-        "ccResponse": { "from": "incomingData" }
-      },
-      "stopOnEmpty": true
-    },
-    "dataSchema": {
-      "type": "secret",
-      "links": {
-        "name": { "from": "pipelineConfig", "elem": "dataSchemaFile" }
-      },
-      "errorIfEmpty": true
-    },
-    "dataValidation": {
-      "type": "validation",
-      "links": {
-        "content": { "from": "cloudConnResponse" },
-        "schema": { "from": "dataSchema" }
-      }
-    },
-    "edgeXEvent": {
-      "type": "template",
-      "ifSuccessful": [ "dataValidation" ],
-      "raw": {
-        "template": "edgeXEvent",
-        "namespaces": [ "edgex", "ASNSKU" ],
-        "initialData": {
-          "dataType": "ASN",
-          "device": "ASN_Data_Device"
-        }
-      },
-      "links": {
-        "data": { "from": "cloudConnResponse" },
-        "siteID": { "from": "pipelineConfig", "elem": "siteID" }
-      }
-    },
-    "sendEdgeXEvent": {
-      "type": "http",
-      "ifSuccessful": [ "dataValidation" ],
-      "raw": {
-        "method": "POST"
-      },
-      "links": {
-        "body": { "from": "edgeXEvent" },
-        "url": { "from": "coreDataURL" }
-      }
-    },
-    "updateLastCompleted": {
-      "type": "put",
-      "raw": {
-        "name": "asn.lastUpdated"
-      },
-      "links": {
-        "value": {
-          "from": "sendEdgeXEvent",
-          "using": "status",
-          "elem": "CompletedAt"
+        "inputs": {
+          "lastUpdatedKey": "asn.lastUpdated",
+          "dataEndpoint": "http://asn_data",
+          "siteID": "rrs-gateway",
+          "deviceName": "ASN_Data_Device",
+          "dataType": "ASN_data",
+          "dataSchemaName": "ASNSchema.json"
         }
       }
     }

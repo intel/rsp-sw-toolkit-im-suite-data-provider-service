@@ -7,8 +7,8 @@
     {{- $oauth := json .oAuthCreds -}}
 
     {
-    "url": "{{block "ccDest" $}}{{str $.destinationURL}}{{end}}",
-    "method": "{{or (str $.method) "GET"}}"
+    "url": "{{.destinationURL|str}}",
+    "method": {{.method|str}}
     {{- if $oauth.useAuth -}}
         ,
         "auth": {

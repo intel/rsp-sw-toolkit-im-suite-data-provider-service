@@ -1,0 +1,38 @@
+{
+  "name": "providerURL",
+  "description": "Constructs a URL using a 'last download time' provided via a key and source.",
+  "timeoutSeconds": 5,
+  "defaultOutput": "url",
+  "tasks": {
+    "dataEndpoint": {
+      "type": "input",
+      "description": "Base endpoint, extended with query parameters, used when downloading data."
+    },
+    "lastUpdatedKey": {
+      "type": "input",
+      "description": "Key used to lookup the 'last updated time', which is used as a query parameter in the request URL."
+    },
+    "siteID": {
+      "type": "input",
+      "default": "rrs-gateway",
+      "description": "Used as a query parameter for the download URL."
+    },
+    "lastUpdated": {
+      "type": "get",
+      "raw": { "default": 0 },
+      "links": { "name": { "from": "lastUpdatedKey" } }
+    },
+    "url": {
+      "type": "template",
+      "raw": {
+        "template": "siteQuery",
+        "namespaces": [ "provider" ]
+      },
+      "links": {
+        "baseURL": { "from": "dataEndpoint" },
+        "siteID": { "from": "siteID" },
+        "lastUpdated": { "from": "lastUpdated" }
+      }
+    }
+  }
+}

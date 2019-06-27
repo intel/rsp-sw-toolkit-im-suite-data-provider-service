@@ -1,0 +1,63 @@
+{
+  "name": "clusterConfig",
+  "description": "Downloads cluster config and sends it on MQTT",
+  "tasks": {
+    "lastUpdated": {
+      "type": "get",
+      "raw": {
+        "name": "cluster.lastUpdated",
+        "default": 0
+      }
+    },
+    "createURL": {
+      "type": "template",
+      "raw": {
+        "template": "clusterURL",
+        "namespaces": [ "acePoint" ],
+        "initialData": {
+          "baseURL": "http://clusterConfig",
+          "siteID": "ace-gateway"
+        }
+      },
+      "links": {
+        "lastUpdated": { "from": "lastUpdated" }
+      }
+    },
+    "downloadConfig": {
+      "type": "proxydownload",
+      "raw": {
+        "inputs": {
+          "method": "GET",
+          "dataSchemaName": "clusterSchema.json"
+        }
+      },
+      "links": {
+        "destinationURL": { "from": "createURL" }
+      }
+    },
+    "getUUID": { "type": "uuid" },
+    "rpcMsg": {
+      "type": "template",
+      "raw": {
+        "namespaces": [ "acePoint" ],
+        "template": "jsonRPC",
+        "initialData": {
+          "method": "cluster_set_config"
+        }
+      },
+      "links": {
+        "id": { "from": "getUUID" },
+        "params": { "from": "downloadConfig" }
+      }
+    },
+    "sendCommand": {
+      "type": "gwMQTT",
+      "raw": {
+        "name": "rfid/gw/command"
+      },
+      "links": {
+        "value": { "from": "rpcMsg" }
+      }
+    }
+  }
+}

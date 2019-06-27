@@ -1,0 +1,5 @@
+{
+  "method": "GET",
+  "destinationURL": "http://example.com",
+  "oAuthCreds": {"useAuth":  false}
+}

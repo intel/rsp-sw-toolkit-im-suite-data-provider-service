@@ -1,0 +1,8 @@
+{
+  "endpoint": "mosquitto-server:1883",
+  "clientID": "data-provider",
+  "timeoutSecs": 30,
+  "skipCertVerify": true,
+  "username": "",
+  "password": ""
+}

@@ -6,6 +6,17 @@
   "port": "8080",
   "pipelinesDir": "app/config/pipelines",
   "templatesDir": "app/config/templates",
-  "pipelineNames": ["ASNPipeline.json", "SKUPipeline.json"],
+  "pipelineNames": [
+    "ASNPipeline.json",
+    "SKUPipeline.json",
+    "ClusterPipeline.json"
+  ],
+  "customTaskTypes": [
+    "CloudConnTask.json",
+    "EdgeXEvent.json",
+    "URLBuilder.json",
+    "ProvideEdgeX.json"
+  ],
+  "mqttClients": [ "gwMQTT" ],
   "secretsPath": "/run/secrets"
 }

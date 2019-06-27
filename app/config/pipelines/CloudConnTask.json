@@ -1,0 +1,67 @@
+{
+  "name": "proxydownload",
+  "description": "Downloads data from an HTTP endpoint via the cloud connector.",
+  "timeoutSeconds": 60,
+  "defaultOutput": "data",
+  "tasks": {
+    "destinationURL": { "type": "input" },
+    "dataSchemaName": { "type": "input" },
+    "oauthConfig": {
+      "type": "input",
+      "raw": { "default": { "useAuth": false } }
+    },
+    "cloudConnEndpoint": {
+      "type": "input",
+      "raw": { "default": "http://cloud-connector:8080/callwebhook" }
+    },
+    "method": { "type": "input", "default": "GET" },
+    "proxyRequest": {
+      "type": "template",
+      "description": "Creates a request for the Cloud Connector to get the data",
+      "raw": {
+        "template": "proxyCCRequest",
+        "namespaces": [ "cloudConn" ]
+      },
+      "links": {
+        "method": { "from": "method" },
+        "oAuthCreds": { "from": "oauthConfig" },
+        "destinationURL": { "from": "destinationURL" }
+      }
+    },
+    "incomingData": {
+      "type": "http",
+      "raw": {
+        "maxRetries": 3,
+        "method": "POST"
+      },
+      "links": {
+        "body": { "from": "proxyRequest" },
+        "url": { "from": "cloudConnEndpoint" }
+      }
+    },
+    "data": {
+      "type": "template",
+      "raw": {
+        "template": "extractCCResponse",
+        "namespaces": [ "cloudConn" ]
+      },
+      "links": {
+        "ccResponse": { "from": "incomingData" }
+      }
+    },
+    "dataSchema": {
+      "type": "secret",
+      "links": {
+        "name": { "from": "dataSchemaName" }
+      },
+      "errorIfEmpty": true
+    },
+    "validate": {
+      "type": "validation",
+      "links": {
+        "content": { "from": "data" },
+        "schema": { "from": "dataSchema" }
+      }
+    }
+  }
+}

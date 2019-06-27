@@ -1,0 +1,68 @@
+{
+  "name": "provideEdgeX",
+  "description": "Download some data, validate it, and push it to EdgeX's Core Data as an EdgeXEvent.",
+  "timeoutSeconds": 120,
+  "defaultOutput": "downloadData",
+  "tasks": {
+    "dataType": { "type": "input" },
+    "deviceName": { "type": "input" },
+    "lastUpdatedKey": { "type": "input" },
+    "dataEndpoint": { "type": "input" },
+    "siteID": { "type": "input", "default": "rrs-gateway" },
+    "dataSchemaName": { "type": "input" },
+
+    "constructURL": {
+      "type": "providerURL",
+      "links": {
+        "lastUpdatedKey": { "from": "lastUpdatedKey" },
+        "dataEndpoint": { "from": "dataEndpoint" },
+        "siteID": { "from": "siteID" }
+      }
+    },
+
+    "lastUpdated": {
+      "type": "get",
+      "raw": {
+        "default": 0
+      },
+      "links": {
+        "name": { "from": "lastUpdatedKey" }
+      }
+    },
+    "downloadData": {
+      "type": "proxydownload",
+      "raw": {
+        "inputs": {
+          "method": "GET"
+        }
+      },
+      "links": {
+        "dataSchemaName": { "from": "dataSchemaName" },
+        "destinationURL": { "from": "constructURL" }
+      },
+      "errorIfEmpty": true
+    },
+    "sendEdgeXEvent": {
+      "type": "edgeXEvent",
+      "raw": {
+        "template": "edgeXReadings",
+        "namespaces": [ "edgex" ]
+      },
+      "links": {
+        "dataType": { "from": "dataType" },
+        "deviceName": { "from": "deviceName" },
+        "readings": { "from": "downloadData" }
+      }
+    },
+    "updateLastCompleted": {
+      "type": "put",
+      "links": {
+        "name": { "from": "lastUpdatedKey" },
+        "value": {
+          "from": "sendEdgeXEvent",
+          "using": "completionTime"
+        }
+      }
+    }
+  }
+}

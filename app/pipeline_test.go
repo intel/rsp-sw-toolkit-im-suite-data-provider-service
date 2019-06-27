@@ -50,19 +50,22 @@ func (mss *multiSearchSource) Get(ctx context.Context, key string) ([]byte, bool
 }
 
 func getTestPlumber() goplumber.Plumber {
-	p := goplumber.NewPlumber(tmplLoader)
+	p := goplumber.NewPlumber()
 	mss := &multiSearchSource{sources: []goplumber.DataSource{memoryStore, dataLoader}}
-	p.TaskGenerators["secret"] = goplumber.NewLoadTaskGenerator(mss)
-	p.TaskGenerators["get"] = goplumber.NewLoadTaskGenerator(memoryStore)
-	p.TaskGenerators["put"] = goplumber.NewStoreTaskGenerator(memoryStore)
+	p.SetTemplateSource("template", tmplLoader)
+	p.SetSource("secret", mss)
+	p.SetSource("get", memoryStore)
+	p.SetSink("put", memoryStore)
 
 	return p
 }
 
-func getTestPipeline(w *expect.TWrapper, plumber goplumber.Plumber, name string) goplumber.Pipeline {
+func getTestPipeline(w *expect.TWrapper, plumber goplumber.Plumber, name string) *goplumber.Pipeline {
 	w.Helper()
 	conf := w.ShouldHaveResult(pipeLoader.GetFile(name)).([]byte)
-	pipeline := w.ShouldHaveResult(plumber.NewPipeline(conf)).(goplumber.Pipeline)
+	pConf := &goplumber.PipelineConfig{}
+	w.ShouldSucceed(json.Unmarshal(conf, pConf))
+	pipeline := w.ShouldHaveResult(plumber.NewPipeline(pConf)).(*goplumber.Pipeline)
 	return pipeline
 }
 
@@ -92,22 +95,31 @@ func withDataServer(w *expect.TWrapper, dataMap map[string][]byte, f func(url st
 func testPipeline(w *expect.TWrapper, p *goplumber.Pipeline, memname string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(10)*time.Second)
 	defer cancel()
-	w.ShouldSucceed(p.Execute(ctx))
+	w.ShouldSucceed(p.Execute(ctx).Err)
 
-	r, ok, err := memoryStore.Get(ctx, memname)
-	w.ShouldHaveResult(r, err)
+	t1, ok, err := memoryStore.Get(ctx, memname)
+	w.ShouldHaveResult(t1, err)
 	w.ShouldBeTrue(ok)
-	rn := w.ShouldHaveResult(strconv.Atoi(string(r))).(int)
-	w.Logf("%d", rn)
+	w.Log(t1)
 
 	// run a second time
-	w.ShouldSucceed(p.Execute(context.Background()))
-	r2, ok, err := memoryStore.Get(ctx, memname)
-	w.ShouldHaveResult(r2, err)
+	w.ShouldSucceed(p.Execute(context.Background()).Err)
+	t2, ok, err := memoryStore.Get(ctx, memname)
+	w.ShouldHaveResult(t2, err)
 	w.ShouldBeTrue(ok)
-	rn2 := w.ShouldHaveResult(strconv.Atoi(string(r2))).(int)
-	w.Logf("%d", rn2)
-	w.ShouldBeTrue(rn2 >= rn)
+	c1 := w.ShouldHaveResult(strconv.Atoi(string(t1))).(int)
+	c2 := w.ShouldHaveResult(strconv.Atoi(string(t2))).(int)
+	w.ShouldBeTrue(c1 <= c2)
+}
+
+func addTaskType(w *expect.TWrapper, plumber goplumber.Plumber, name string, onLoad func(*goplumber.PipelineConfig)) {
+	pConf := &goplumber.PipelineConfig{}
+	ccTaskConf := w.ShouldHaveResult(pipeLoader.GetFile(name)).([]byte)
+	w.ShouldSucceed(json.Unmarshal(ccTaskConf, pConf))
+	onLoad(pConf)
+	pline := w.ShouldHaveResult(plumber.NewPipeline(pConf)).(*goplumber.Pipeline)
+	plumber.Clients[pConf.Name] =
+		w.ShouldHaveResult(goplumber.NewTaskType(pline)).(goplumber.Client)
 }
 
 func TestSKU(t *testing.T) {
@@ -127,22 +139,18 @@ func TestSKU(t *testing.T) {
 			`[{"ServicePort":"%s","ServiceAddress":"%s",%s}]`,
 			serverURL.Port(), serverURL.Hostname(), coreData))
 
-		_ = memoryStore.Put(context.Background(), "skuPipelineConfig.json",
-			[]byte(fmt.Sprintf(`{
-			  "siteID": "rrs-gateway",
-			  "dataEndpoint": "http://example.com/data",
-			  "cloudConnEndpoint": "%[1]s/cloudconn",
-			  "coreDataLookup": "%[1]s/core-data",
-			  "mqttEndpoint": "mosquitto-server:9883",
-			  "dataSchemaFile": "SKUSchema.json",
-			  "oauthConfig": { "useAuth": false }
-			}`, addr)))
+		addTaskType(w, plumber, "CloudConnTask.json", func(config *goplumber.PipelineConfig) {
+			config.Tasks["cloudConnEndpoint"].Raw = []byte(fmt.Sprintf(`{"default": "%s/cloudconn"}`, addr))
+		})
+		addTaskType(w, plumber, "EdgeXEvent.json", func(config *goplumber.PipelineConfig) {
+			config.Tasks["coreDataConsulAddress"].Raw = []byte(fmt.Sprintf(`{"default": "%s/core-data"}`, addr))
+		})
+		addTaskType(w, plumber, "URLBuilder.json", func(*goplumber.PipelineConfig) {})
+		addTaskType(w, plumber, "ProvideEdgeX.json", func(*goplumber.PipelineConfig) {})
 
 		p := getTestPipeline(w, plumber, "SKUPipeline.json")
-		testPipeline(w, &p, "skus.lastUpdated")
+		testPipeline(w, p, "sku.lastUpdated")
 	})
-
-	w.ShouldContain(results, []string{"/api/v1/event", "/cloudconn"})
 
 	type edgexReading struct {
 		Name  string
@@ -154,6 +162,7 @@ func TestSKU(t *testing.T) {
 		Readings []edgexReading
 	}
 	var ee edgexEvent
+	w.ShouldContain(results, []string{"/api/v1/event", "/cloudconn"})
 	w.Logf("%s", results["/api/v1/event"])
 	w.ShouldSucceed(json.Unmarshal(results["/api/v1/event"], &ee))
 	w.ShouldBeTrue(ee.Origin > 0)
@@ -168,31 +177,30 @@ func TestASN(t *testing.T) {
 	asnData := base64.StdEncoding.EncodeToString(getTestData(w, "asnData.json"))
 
 	plumber := getTestPlumber()
-
 	dataMap := map[string][]byte{
-		"/cloudconn":    []byte(fmt.Sprintf(`{"statuscode":200,"body":"%s"}`, asnData)),
+		"/cloudconn": []byte(
+			fmt.Sprintf(`{"statuscode":200,"body":"%s"}`, asnData)),
 		"/api/v1/event": []byte(``), // POSTed to
 	}
 	coreData := `"ID":"3325fece-83ca-8736-bc88-bda1d9d56caf","Node":"edgex-core-consul","Address":"127.0.0.1","Datacenter":"dc1","TaggedAddresses":{"lan":"127.0.0.1","wan":"127.0.0.1"},"NodeMeta":{"consul-network-segment":""},"ServiceID":"edgex-core-data","ServiceName":"edgex-core-data","ServiceTags":[],"ServiceMeta":{},"ServiceEnableTagOverride":false,"CreateIndex":15,"ModifyIndex":15`
 	results := withDataServer(w, dataMap, func(addr string) {
+		// set the server URL for all of these...
 		serverURL := w.ShouldHaveResult(url.Parse(addr)).(*url.URL)
 		dataMap["/core-data"] = []byte(fmt.Sprintf(
 			`[{"ServicePort":"%s","ServiceAddress":"%s",%s}]`,
 			serverURL.Port(), serverURL.Hostname(), coreData))
 
-		_ = memoryStore.Put(context.Background(), "asnPipelineConfig.json",
-			[]byte(fmt.Sprintf(`{
-				  "siteID": "rrs-gateway",
-				  "dataEndpoint": "http://example.com/data",
-				  "cloudConnEndpoint": "%[1]s/cloudconn",
-				  "coreDataLookup": "%[1]s/core-data",
-				  "mqttEndpoint": "mosquitto-server:9883",
-				  "dataSchemaFile": "ASNSchema.json",
-				  "oauthConfig": { "useAuth": false }
-				}`, addr)))
+		addTaskType(w, plumber, "CloudConnTask.json", func(config *goplumber.PipelineConfig) {
+			config.Tasks["cloudConnEndpoint"].Raw = []byte(fmt.Sprintf(`{"default": "%s/cloudconn"}`, addr))
+		})
+		addTaskType(w, plumber, "EdgeXEvent.json", func(config *goplumber.PipelineConfig) {
+			config.Tasks["coreDataConsulAddress"].Raw = []byte(fmt.Sprintf(`{"default": "%s/core-data"}`, addr))
+		})
+		addTaskType(w, plumber, "URLBuilder.json", func(*goplumber.PipelineConfig) {})
+		addTaskType(w, plumber, "ProvideEdgeX.json", func(*goplumber.PipelineConfig) {})
 
 		p := getTestPipeline(w, plumber, "ASNPipeline.json")
-		testPipeline(w, &p, "asn.lastUpdated")
+		testPipeline(w, p, "asn.lastUpdated")
 	})
 
 	w.ShouldContain(results, []string{"/api/v1/event", "/cloudconn"})

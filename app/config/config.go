@@ -36,12 +36,20 @@ type ServiceConfig struct {
 
 	// PipelinesDir is a directory containing pipeline configurations.
 	PipelinesDir string
-	// PipelineNames is a list of filenames to load from the pipeline directory.
+	// PipelineNames is a list of filenames to load from the pipelines directory.
 	PipelineNames []string
+	// PipelineTasks is a list filenames containing pipelines to use as custom
+	// Task types. The files should be in the pipelines directory. They will be
+	// loaded and added to the Plumber with a type name equal to the pipeline's
+	// name; the output task should be named "output". Note that if multiple
+	// pipelines have the same name, only the last loaded type will be used.
+	CustomTaskTypes []string
 	// TemplatesDir is a directory containing template namespace files.
 	TemplatesDir string
 	// SecretsPath is the path to docker secrets, usually /run/secrets.
 	SecretsPath string
+	// MQTTClients are files containing MQTT client configurations.
+	MQTTClients []string
 }
 
 // AppConfig exports a package-level configuration object.
@@ -76,6 +84,16 @@ func InitConfig() error {
 	}
 
 	AppConfig.PipelineNames, err = config.GetStringSlice("pipelineNames")
+	if err != nil {
+		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
+	}
+
+	AppConfig.CustomTaskTypes, err = config.GetStringSlice("customTaskTypes")
+	if err != nil {
+		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
+	}
+
+	AppConfig.MQTTClients, err = config.GetStringSlice("mqttClients")
 	if err != nil {
 		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
 	}
