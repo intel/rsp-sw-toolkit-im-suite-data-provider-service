@@ -25,7 +25,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.impcloud.net/Responsive-Retail-Inventory/data-provider-service/app/config"
+	"github.impcloud.net/RSP-Inventory-Suite/data-provider-service/app/config"
 )
 
 var status = "healthy"

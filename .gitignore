@@ -42,3 +42,5 @@ cSpell.json
 settings.json
 
 .gitattributes
+
+go.sum
