@@ -24,7 +24,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ./data-provider-s
 FROM scratch
 
 COPY --from=gobuilder /go/src/github.impcloud.net/RSP-Inventory-Suite/data-provider-service/data-provider-service /
-COPY --from=gobuilder /go/src/github.impcloud.net/RSP-Inventory-Suite/data-provider-service/app/config/pipelines/ /pipelines
 COPY --from=gobuilder /go/src/github.impcloud.net/RSP-Inventory-Suite/data-provider-service/app/config/templates/ /templates
 
 EXPOSE 8080

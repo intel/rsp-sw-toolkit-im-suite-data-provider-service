@@ -1,6 +1,6 @@
 FROM scratch
 ADD data-provider-service /
-ADD app/config/pipelines /pipelines
+
 ADD app/config/templates /templates
 
 EXPOSE 8080
