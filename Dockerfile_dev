@@ -1,0 +1,36 @@
+FROM golang:1.12-alpine as gobuilder
+
+ENV GO111MODULE=on
+
+RUN echo http://nl.alpinelinux.org/alpine/v3.6/main > /etc/apk/repositories; \
+    echo http://nl.alpinelinux.org/alpine/v3.6/community >> /etc/apk/repositories
+
+RUN apk add --no-cache git bash 
+
+# Authentication needed to pull git modules from github.impcloud.net
+RUN git config --global credential.helper store
+ARG GIT_TOKEN
+RUN set +x && echo "https://$GIT_TOKEN:x-oauth-basic@github.impcloud.net" > ~/.git-credentials
+
+WORKDIR $GOPATH/src/github.impcloud.net/RSP-Inventory-Suite/data-provider-service
+
+COPY go.mod go.mod
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ./data-provider-service
+
+FROM scratch
+
+COPY --from=gobuilder /go/src/github.impcloud.net/RSP-Inventory-Suite/data-provider-service/data-provider-service /
+COPY --from=gobuilder /go/src/github.impcloud.net/RSP-Inventory-Suite/data-provider-service/app/config/pipelines/ /pipelines
+COPY --from=gobuilder /go/src/github.impcloud.net/RSP-Inventory-Suite/data-provider-service/app/config/templates/ /templates
+
+EXPOSE 8080
+HEALTHCHECK --interval=5s --timeout=3s CMD ["/data-provider-service","-isHealthy"]
+
+ARG GIT_COMMIT=unspecified
+LABEL git_commit=$GIT_COMMIT
+
+ENTRYPOINT ["/data-provider-service"]
