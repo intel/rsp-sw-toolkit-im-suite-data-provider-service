@@ -22,10 +22,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/pborman/uuid"
-	"github.com/pkg/errors"
-	"github.impcloud.net/RSP-Inventory-Suite/goplumber"
-	"github.impcloud.net/RSP-Inventory-Suite/data-provider-service/app/routes"
 	"io"
 	"net/http"
 	"os"
@@ -34,10 +30,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
+	"github.impcloud.net/RSP-Inventory-Suite/data-provider-service/app/routes"
+	"github.impcloud.net/RSP-Inventory-Suite/goplumber"
+
 	log "github.com/sirupsen/logrus"
-	"github.impcloud.net/Responsive-Retail-Core/utilities/go-metrics"
-	reporter "github.impcloud.net/Responsive-Retail-Core/utilities/go-metrics-influxdb"
 	"github.impcloud.net/RSP-Inventory-Suite/data-provider-service/app/config"
+	"github.impcloud.net/RSP-Inventory-Suite/utilities/go-metrics"
+	reporter "github.impcloud.net/RSP-Inventory-Suite/utilities/go-metrics-influxdb"
 )
 
 func main() {

@@ -23,8 +23,8 @@ import (
 	"flag"
 	"os"
 
-	"github.impcloud.net/Responsive-Retail-Core/utilities/go-metrics"
 	"github.impcloud.net/RSP-Inventory-Suite/data-provider-service/pkg/healthcheck"
+	"github.impcloud.net/RSP-Inventory-Suite/utilities/go-metrics"
 
 	"github.com/sirupsen/logrus"
 )

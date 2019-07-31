@@ -23,7 +23,7 @@ import (
 	"log"
 
 	"github.com/pkg/errors"
-	"github.impcloud.net/Responsive-Retail-Core/utilities/configuration"
+	"github.impcloud.net/RSP-Inventory-Suite/utilities/configuration"
 )
 
 // ServiceConfig holds the service configuration.
