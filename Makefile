@@ -8,30 +8,53 @@
 REPO?=280211473891.dkr.ecr.us-west-2.amazonaws.com/rsp/data-provider-service
 TAG?=latest
 
-.PHONY: up down server edgex data-provider cloud-connector net
+CONTAINERS=server cloud-connector mqtt data-provider
+
+.PHONY: up down build update net edgex
+.PHONY: $(CONTAINERS)
+
+up: net edgex $(CONTAINERS)
+down:
+	-docker rm -f $(CONTAINERS)
+	-docker-compose -f edgex-compose.yml down
+	-docker network rm edgex-network
+
+null  :=
+space := $(null) #
+comma := ,
+COMMA_CONTAINERS := $(subst $(space),$(comma),$(strip $(CONTAINERS)))
 
 up: net server edgex cloud-connector data-provider
 
 net:
 	-docker network create edgex-network
 
+edgex:
+	docker-compose -f edgex-compose.yml up -d
+
+data-provider:
+	-docker rm -f $@
+	docker run -it --rm --name $@ \
+		-v $$(PWD)/app/testdata:/run/secrets \
+		-v $$(PWD)/app/config:/app/config \
+		--net edgex-network \
+		--env no_proxy="$(COMMA_CONTAINERS),edgex-core-consul,edgex-core-data" \
+		--env NO_PROXY="$(COMMA_CONTAINERS),edgex-core-consul,edgex-core-data" \
+		--env runtimeConfigPath="/app/config/configuration.json" \
+		$(REPO):$(TAG)
+
+
 mqtt:
 	-docker rm -f $@
 	docker run -d --name $@ \
 		--net edgex-network \
-		--network-alias mosquitto-server \
-		--env HTTP_PROXY="" \
-		--env http_proxy="" \
-		--env HTTPS_PROXY="" \
-		--env https_proxy="" \
 		--env NO_PROXY="*" \
 		--env no_proxy="*" \
 		-v $$(PWD)/app/testdata/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro \
 		eclipse-mosquitto
 
-
 server:
-	-docker stop $@
+	-docker rm -f $@
 	docker run -d --rm --name $@ \
 		--net edgex-network \
 		--network-alias asn_data \
@@ -41,23 +64,8 @@ server:
 		-v $$(PWD)/app/testdata/nginx.conf:/etc/nginx/nginx.conf:ro \
 		nginx
 
-edgex:
-	docker-compose -f edgex-compose.yml up -d
-
-
-data-provider:
-	-docker stop $@
-	docker run -it --rm --name $@ \
-		-v $$(PWD)/app/testdata:/run/secrets \
-		-v $$(PWD)/app/config:/app/config \
-		--net edgex-network \
-		--env no_proxy="mosquitto-server,cloud-connector,edgex-core-consul,edgex-core-data" \
-		--env NO_PROXY="mosquitto-server,cloud-connector,edgex-core-consul,edgex-core-data" \
-		--env runtimeConfigPath="/app/config/configuration.json" \
-		$(REPO):$(TAG)
-
 cloud-connector:
-	-docker stop $@
+	-docker rm -f $@
 	docker run --rm -d --name $@ \
 		-v $$(PWD)/app/testdata:/files \
 		-u 2000:2000 \
@@ -67,7 +75,3 @@ cloud-connector:
 		--env runtimeConfigPath="/files/cc-config.json" \
 		280211473891.dkr.ecr.us-west-2.amazonaws.com/cloud-connector-service@sha256:8f7356f7ed9c3b9edde01b618fdf4266983ff42e89d9a5d30b90ff575f70610b
 
-down:
-	-docker stop cloud-connector data-provider
-	-docker-compose -f edgex-compose.yml down
-	-docker network rm edgex-network

@@ -53,7 +53,7 @@
     "sendCommand": {
       "type": "gwMQTT",
       "raw": {
-        "name": "rfid/gw/command"
+        "name": "rfid/controller/command"
       },
       "links": {
         "value": { "from": "rpcMsg" }
