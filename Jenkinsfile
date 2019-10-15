@@ -10,6 +10,8 @@ rrpBuildGoCode {
     infra = [
         stackName: 'RRP-Codepipeline-DataProviderService'
     ]
+    
+    customBuildScript = "./build.sh"
 
     notify = [
         slack: [ success: '#ima-build-success', failure: '#ima-build-failed' ]
