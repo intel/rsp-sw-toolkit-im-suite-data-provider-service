@@ -110,11 +110,11 @@ func loadPipelines(ctx context.Context) error {
 		}
 		mqttConfData, err := pipedata.GetFile(fn)
 		if err != nil {
-			return errors.Errorf("unable to load mqtt config %s", fn)
+			return errors.Wrapf(err, "unable to load mqtt config %q", fn)
 		}
 		mc := &goplumber.MQTTClient{}
 		if err := json.Unmarshal(mqttConfData, mc); err != nil {
-			return errors.Wrapf(err, "unable to unmarshal mqtt config for %s", fn)
+			return errors.Wrapf(err, "unable to unmarshal mqtt config for %q", fn)
 		}
 		plumber.SetSink(name, mc)
 	}
@@ -123,21 +123,21 @@ func loadPipelines(ctx context.Context) error {
 	for _, name := range config.AppConfig.CustomTaskTypes {
 		data, err := pipedata.GetFile(name)
 		if err != nil {
-			return errors.Wrapf(err, "failed to load pipeline from file %s", name)
+			return errors.Wrapf(err, "failed to load pipeline from file %q", name)
 		}
 
 		var pipelineConf goplumber.PipelineConfig
 		if err := json.Unmarshal(data, &pipelineConf); err != nil {
-			return errors.Wrapf(err, "failed to unmarshal pipeline config from %s", name)
+			return errors.Wrapf(err, "failed to unmarshal pipeline config from %q", name)
 		}
 
 		taskType, err := plumber.NewPipeline(&pipelineConf)
 		if err != nil {
-			return errors.Wrapf(err, "failed to load pipeline %s", name)
+			return errors.Wrapf(err, "failed to load pipeline %q", name)
 		}
 		client, err := goplumber.NewTaskType(taskType)
 		if err != nil {
-			return errors.Wrapf(err, "failed to create client for %s", name)
+			return errors.Wrapf(err, "failed to create client for %q", name)
 		}
 		plumber.SetClient(pipelineConf.Name, client)
 	}
@@ -148,12 +148,12 @@ func loadPipelines(ctx context.Context) error {
 	for _, name := range config.AppConfig.PipelineNames {
 		data, err := pipedata.GetFile(name)
 		if err != nil {
-			return errors.Wrapf(err, "failed to load pipeline %s", name)
+			return errors.Wrapf(err, "failed to load pipeline %q", name)
 		}
 
 		var pipelineConf goplumber.PipelineConfig
 		if err := json.Unmarshal(data, &pipelineConf); err != nil {
-			return errors.Wrapf(err, "failed to unmarshal pipeline config from %s", name)
+			return errors.Wrapf(err, "failed to unmarshal pipeline config from %q", name)
 		}
 
 		p, err := plumber.NewPipeline(&pipelineConf)
@@ -165,7 +165,7 @@ func loadPipelines(ctx context.Context) error {
 		if d <= 0 {
 			old := d
 			d = time.Duration(2) * time.Minute
-			log.Warningf("setting pipeline '%s' interval from %s to %s",
+			log.Warningf("setting pipeline %q interval from %s to %s",
 				pipelineConf.Name, old, d)
 		}
 		plines[p] = d
