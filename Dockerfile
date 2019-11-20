@@ -1,7 +1,7 @@
 FROM scratch
-ADD data-provider-service /
+COPY data-provider-service /
 
-ADD app/config/templates /templates
+COPY app/config/templates /templates
 
 EXPOSE 8080
 ARG GIT_COMMIT=unspecified
