@@ -39,6 +39,7 @@ import (
 	"github.impcloud.net/RSP-Inventory-Suite/data-provider-service/app/config"
 	"github.impcloud.net/RSP-Inventory-Suite/utilities/go-metrics"
 	reporter "github.impcloud.net/RSP-Inventory-Suite/utilities/go-metrics-influxdb"
+	golog "log"
 )
 
 func main() {
@@ -46,12 +47,11 @@ func main() {
 	mPipelineErr := metrics.GetOrRegisterGauge("DataProvider.Main.PipelineSetupError", nil)
 
 	// Load config variables
-	err := config.InitConfig()
-	exitIfError(err, mConfigurationError, "Unable to load configuration variables.")
+	exitIfError(config.InitConfig(), mConfigurationError, "Unable to load configuration variables.")
 
-	setLogLevel()
+	setLogLevel(config.AppConfig.LoggingLevel)
 	healthCheck(config.AppConfig.Port)
-	// initMetrics()
+	initMetrics()
 
 	logMain := func(args ...interface{}) {
 		log.WithFields(log.Fields{
@@ -235,12 +235,22 @@ func startWebServer(router http.Handler) {
 	wg.Wait()
 }
 
-func setLogLevel() {
-	if config.AppConfig.LoggingLevel == "debug" {
+func setLogLevel(loggingLevel string) {
+	switch strings.ToLower(loggingLevel) {
+	case "error":
+		log.SetLevel(log.ErrorLevel)
+	case "warn":
+		log.SetLevel(log.WarnLevel)
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "debug":
 		log.SetLevel(log.DebugLevel)
-	} else {
-		log.SetFormatter(&log.JSONFormatter{})
+	default:
+		log.SetLevel(log.InfoLevel)
 	}
+
+	// Not using filtered func (Info, etc ) so that message is always logged
+	golog.Printf("Logging level set to %s\n", loggingLevel)
 }
 
 func initMetrics() {

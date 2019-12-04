@@ -20,8 +20,6 @@
 package config
 
 import (
-	"log"
-
 	"github.com/pkg/errors"
 	"github.impcloud.net/RSP-Inventory-Suite/utilities/configuration"
 )
@@ -61,7 +59,6 @@ func InitConfig() error {
 	if err != nil {
 		return errors.Wrapf(err, "Unable to load config variables: %s", err.Error())
 	}
-	log.Println(config)
 
 	for _, required := range []struct {
 		v    *string
