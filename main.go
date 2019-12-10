@@ -85,12 +85,12 @@ func loadPipelines(ctx context.Context) error {
 	plumber := goplumber.NewPlumber()
 
 	// load pipelines and templates from the filesystem
-	loader := goplumber.NewFSLoader(config.AppConfig.TemplatesDir)
+	loader := goplumber.NewFileSystem(config.AppConfig.TemplatesDir)
 	plumber.SetTemplateSource("template", loader)
 
 	// add a task for getting Docker secrets
 	plumber.SetSource("secret",
-		goplumber.NewFSLoader(config.AppConfig.SecretsPath))
+		goplumber.NewFileSystem(config.AppConfig.SecretsPath))
 
 	// just use memory for K/V data; later, use consul or a db
 	kvData := goplumber.NewMemoryStore()
@@ -102,7 +102,7 @@ func loadPipelines(ctx context.Context) error {
 		func(task *goplumber.Task) (goplumber.Pipe, error) { return uuidGen{}, nil }))
 
 	log.Debug("Loading MQTT clients (if any).")
-	pipedata := goplumber.NewFSLoader(config.AppConfig.PipelinesDir)
+	pipedata := goplumber.NewFileSystem(config.AppConfig.PipelinesDir)
 	for _, fn := range config.AppConfig.MQTTClients {
 		name := fn
 		if !strings.HasSuffix(fn, ".json") {
