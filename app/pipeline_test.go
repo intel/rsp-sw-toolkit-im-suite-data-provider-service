@@ -25,7 +25,7 @@ import (
 )
 
 func init() {
-	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetLevel(logrus.InfoLevel)
 }
 
 func getTestData(w *expect.TWrapper, filename string) []byte {
@@ -33,9 +33,9 @@ func getTestData(w *expect.TWrapper, filename string) []byte {
 	return w.ShouldHaveResult(dataLoader.GetFile(filename)).([]byte)
 }
 
-var pipeLoader = goplumber.NewFSLoader("config/pipelines")
-var tmplLoader = goplumber.NewFSLoader("config/templates")
-var dataLoader = goplumber.NewFSLoader("testdata")
+var pipeLoader = goplumber.NewFileSystem("config/pipelines")
+var tmplLoader = goplumber.NewFileSystem("config/templates")
+var dataLoader = goplumber.NewFileSystem("testdata")
 var memoryStore = goplumber.NewMemoryStore()
 
 type multiSearchSource struct {
