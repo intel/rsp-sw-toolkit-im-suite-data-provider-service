@@ -3,7 +3,7 @@ The data provider service provides data to the IMA by polling endpoints, validat
 and reshaping data, then pushing it to consuming services (like EdgeX or a Gateway). 
 
 ## Design
-This service makes use of [goplumber](https://github.impcloud.net/RSP-Inventory-Suite/goplumber),
+This service makes use of [goplumber](https://github.com/intel/rsp-sw-toolkit-im-suite-goplumber/),
 an ETL framework for configurable, go-template-based pipelines. Most of the
 heavy-lifting is handled by that library. In principle, this service supports
 anything that one does, but this one comes with some extras specific to the above

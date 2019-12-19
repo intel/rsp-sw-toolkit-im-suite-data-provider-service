@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/intel/rsp-sw-toolkit-im-suite-data-provider-service/pkg/web"
 	log "github.com/sirupsen/logrus"
-	"github.impcloud.net/RSP-Inventory-Suite/data-provider-service/pkg/web"
 )
 
 // Logger middleware

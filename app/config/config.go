@@ -7,8 +7,8 @@
 package config
 
 import (
+	"github.com/intel/rsp-sw-toolkit-im-suite-utilities/configuration"
 	"github.com/pkg/errors"
-	"github.impcloud.net/RSP-Inventory-Suite/utilities/configuration"
 )
 
 // ServiceConfig holds the service configuration.

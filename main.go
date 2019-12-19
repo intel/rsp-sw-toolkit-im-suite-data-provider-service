@@ -17,15 +17,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/intel/rsp-sw-toolkit-im-suite-data-provider-service/app/routes"
+	"github.com/intel/rsp-sw-toolkit-im-suite-goplumber"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
-	"github.impcloud.net/RSP-Inventory-Suite/data-provider-service/app/routes"
-	"github.impcloud.net/RSP-Inventory-Suite/goplumber"
 
+	"github.com/intel/rsp-sw-toolkit-im-suite-data-provider-service/app/config"
+	"github.com/intel/rsp-sw-toolkit-im-suite-utilities/go-metrics"
+	reporter "github.com/intel/rsp-sw-toolkit-im-suite-utilities/go-metrics-influxdb"
 	log "github.com/sirupsen/logrus"
-	"github.impcloud.net/RSP-Inventory-Suite/data-provider-service/app/config"
-	"github.impcloud.net/RSP-Inventory-Suite/utilities/go-metrics"
-	reporter "github.impcloud.net/RSP-Inventory-Suite/utilities/go-metrics-influxdb"
 	golog "log"
 )
 

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.impcloud.net/RSP-Inventory-Suite/data-provider-service/app/config"
+	"github.com/intel/rsp-sw-toolkit-im-suite-data-provider-service/app/config"
 )
 
 var status = "healthy"

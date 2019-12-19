@@ -10,8 +10,8 @@ import (
 	"flag"
 	"os"
 
-	"github.impcloud.net/RSP-Inventory-Suite/data-provider-service/pkg/healthcheck"
-	"github.impcloud.net/RSP-Inventory-Suite/utilities/go-metrics"
+	"github.com/intel/rsp-sw-toolkit-im-suite-data-provider-service/pkg/healthcheck"
+	"github.com/intel/rsp-sw-toolkit-im-suite-utilities/go-metrics"
 
 	"github.com/sirupsen/logrus"
 )

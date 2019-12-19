@@ -12,8 +12,8 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.impcloud.net/RSP-Inventory-Suite/data-provider-service/pkg/middlewares"
-	"github.impcloud.net/RSP-Inventory-Suite/data-provider-service/pkg/web"
+	"github.com/intel/rsp-sw-toolkit-im-suite-data-provider-service/pkg/middlewares"
+	"github.com/intel/rsp-sw-toolkit-im-suite-data-provider-service/pkg/web"
 )
 
 // Route struct holds attributes to declare routes
