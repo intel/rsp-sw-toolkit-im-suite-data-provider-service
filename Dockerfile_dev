@@ -7,12 +7,7 @@ RUN echo http://nl.alpinelinux.org/alpine/v3.6/main > /etc/apk/repositories; \
 
 RUN apk add --no-cache git bash 
 
-# Authentication needed to pull git modules from github.impcloud.net
-RUN git config --global credential.helper store
-ARG GIT_TOKEN
-RUN set +x && echo "https://$GIT_TOKEN:x-oauth-basic@github.impcloud.net" > ~/.git-credentials
-
-WORKDIR $GOPATH/src/github.impcloud.net/RSP-Inventory-Suite/data-provider-service
+WORKDIR $GOPATH/src/github.com/intel/rsp-sw-toolkit-im-suite-data-provider-service
 
 COPY go.mod go.mod
 RUN go mod download
@@ -23,8 +18,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ./data-provider-s
 
 FROM scratch
 
-COPY --from=gobuilder /go/src/github.impcloud.net/RSP-Inventory-Suite/data-provider-service/data-provider-service /
-COPY --from=gobuilder /go/src/github.impcloud.net/RSP-Inventory-Suite/data-provider-service/app/config/templates/ /templates
+COPY --from=gobuilder /go/src/github.com/intel/rsp-sw-toolkit-im-suite-data-provider-service/data-provider-service /
+COPY --from=gobuilder /go/src/github.com/intel/rsp-sw-toolkit-im-suite-data-provider-service/app/config/templates/ /templates
 
 EXPOSE 8080
 HEALTHCHECK --interval=5s --timeout=3s CMD ["/data-provider-service","-isHealthy"]
