@@ -5,7 +5,7 @@
 # compose directives, it can't work with Swarm, whereas passing secrets requires
 # Swarm. To avoid the issues, this Makefile just runs the docker commands itself.
 
-REPO?=280211473891.dkr.ecr.us-west-2.amazonaws.com/rsp/data-provider-service
+REPO?=rsp/data-provider-service
 TAG?=latest
 
 CONTAINERS=server cloud-connector mqtt data-provider
@@ -73,5 +73,5 @@ cloud-connector:
 		--env no_proxy="asn_data,sku_data,clusterConfig" \
 		--env NO_PROXY="asn_data,sku_data,clusterConfig" \
 		--env runtimeConfigPath="/files/cc-config.json" \
-		280211473891.dkr.ecr.us-west-2.amazonaws.com/cloud-connector-service@sha256:8f7356f7ed9c3b9edde01b618fdf4266983ff42e89d9a5d30b90ff575f70610b
+		rsp/cloud-connector-service
 
